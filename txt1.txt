@@ -1,0 +1,4 @@
+
+- Iconic section dynamic
+- show all photos model - dynamic rendering of title and make functional Whatsapp etc 
+- Add subtitle in listing page instead of title
