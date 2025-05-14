@@ -703,7 +703,7 @@ const ListingPage = () => {
                 </div>
               ) : (
                 <form className="mt-6" onSubmit={handleSubmit}>
-                  <div className="border border-[#00603A] p-6 mt-4  z-0 sticky top-20">
+                  <div className="border border-[#00603A] p-6 mt-4 md:-mt-8   z-0 sticky top-20">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-lg font-inter font-semibold text-gray-800">

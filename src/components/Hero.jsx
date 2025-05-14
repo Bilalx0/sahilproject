@@ -38,10 +38,13 @@ const ResponsiveHero = ({ searchQuery, onSearchChange, onSearchSubmit }) => {
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
       <div className="relative z-10 flex flex-col justify-center items-center h-full text-center text-white px-4">
-        <form onSubmit={(e) => {
+        <form
+          onSubmit={(e) => {
             e.preventDefault();
             onSearchSubmit(searchQuery);
-          }}  className="bg-white shadow-md w-full max-w-2xl h-10 flex items-center mt-20">
+          }}
+          className="bg-white shadow-md w-full max-w-2xl h-10 flex items-center mt-20"
+        >
           <div className="flex flex-1 items-center">
             <input
               type="text"
@@ -50,7 +53,7 @@ const ResponsiveHero = ({ searchQuery, onSearchChange, onSearchSubmit }) => {
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)} // Changed from onSubmit
             />
-            <button 
+            <button
               type="submit"
               className="flex text-black items-center p-2 pl-4 font-semibold hover:bg-[#00603A] hover:text-[#ffffff] transition duration-300"
             >
@@ -60,10 +63,10 @@ const ResponsiveHero = ({ searchQuery, onSearchChange, onSearchSubmit }) => {
           </div>
         </form>
         <div className="mt-12">
-          <h1 className="font-playfair text-2xl sm:text-3xl md:text-5xl lg:text-5xl mt-12 mb-4 leading-tight">
+          <h1 className="font-playfair text-2xl sm:text-3xl md:text-5xl lg:text-5xl mt-12 mb-8 leading-tight">
             {heading}
           </h1>
-          <p className="font-inter text-sm sm:text-base md:text-base pt-2 max-w-4xl mx-auto leading-relaxed">
+          <p className="font-inter text-sm sm:text-base md:text-base  pt-2 max-w-4xl mx-auto leading-relaxed">
             {subheading}
           </p>
         </div>
