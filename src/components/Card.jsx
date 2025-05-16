@@ -1,20 +1,15 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  FaFacebook,
-  FaInstagram,
-  FaLinkedin,
-  FaTwitter,
-  FaWhatsapp,
-} from "react-icons/fa";
-import { X } from "lucide-react";
-import sharelogo from "../assests/Share Icon_1.svg";
-import sharelogoHover from "../assests/Share Icon White.svg";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaFacebook, FaInstagram, FaLinkedin, FaTwitter, FaWhatsapp } from 'react-icons/fa';
+import { X } from 'lucide-react';
+import sharelogo from '../assests/Share Icon_1.svg';
+import sharelogoHover from '../assests/Share Icon White.svg';
+import { useCurrency } from '../context/CurrencyContext';
 
 const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
   const navigate = useNavigate();
-  const FALLBACK_IMAGE = "/images/fallback.jpg";
+  const { currency, convertPrice } = useCurrency(); // Use CurrencyContext
+  const FALLBACK_IMAGE = '/images/fallback.jpg';
   const [isShareHovered, setIsShareHovered] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
@@ -23,7 +18,7 @@ const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
 
   // Guard clause: return null if no data is provided
   if (!data) {
-    console.error("MansionCard received neither property nor mansion:", {
+    console.error('MansionCard received neither property nor mansion:', {
       property,
       mansion,
     });
@@ -31,7 +26,7 @@ const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
   }
 
   const handleCardClick = () => {
-    navigate(`/mansion/${data.reference || "unknown"}`);
+    navigate(`/mansion/${data.reference || 'unknown'}`);
   };
 
   const handleShareClick = () => {
@@ -41,105 +36,78 @@ const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
 
   const getShareUrl = () => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/property/${data.reference || "unknown"}`;
+    return `${baseUrl}/property/${data.reference || 'unknown'}`;
   };
 
   const encodeShareText = () => {
-    const baseText = `Check out this property: ${data.title || "N/A"} - AED ${
-      data.price || "N/A"
-    } in ${data.community || "N/A"}, ${data.country || "N/A"}`;
-    if (data.propertytype === "Luxury Collectibles") {
+    const convertedPrice = convertPrice(data.price || 0); // Convert price for sharing
+    const baseText = `Check out this property: ${data.title || 'N/A'} - ${currency} ${convertedPrice} in ${data.community || 'N/A'}, ${data.country || 'N/A'}`;
+    if (data.propertytype === 'Luxury Collectibles') {
       return encodeURIComponent(baseText);
     }
     return encodeURIComponent(
-      `${baseText} | ${data.bedrooms || 0} Beds | ${
-        data.bathrooms || 0
-      } Baths | ${data.size || 0} sqft`
+      `${baseText} | ${data.bedrooms || 0} Beds | ${data.bathrooms || 0} Baths | ${data.size || 0} sqft`
     );
   };
 
   const shareToFacebook = () => {
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-      getShareUrl()
-    )}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getShareUrl())}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const shareToInstagram = () => {
     navigator.clipboard.writeText(getShareUrl());
-    alert(
-      "Instagram sharing is not directly supported. Link copied to clipboard for sharing!"
-    );
+    alert('Instagram sharing is not directly supported. Link copied to clipboard for sharing!');
   };
 
   const shareToLinkedIn = () => {
-    const url = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(
-      getShareUrl()
-    )}&title=${encodeShareText()}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const url = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(getShareUrl())}&title=${encodeShareText()}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const shareToTwitter = () => {
-    const url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(
-      getShareUrl()
-    )}&text=${encodeShareText()}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(getShareUrl())}&text=${encodeShareText()}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const shareToWhatsApp = () => {
-    const url = `https://api.whatsapp.com/send?text=${encodeShareText()}%20${encodeURIComponent(
-      getShareUrl()
-    )}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const url = `https://api.whatsapp.com/send?text=${encodeShareText()}%20${encodeURIComponent(getShareUrl())}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Highlight matched search terms
   const highlightText = (text, query) => {
     if (!query || !text) return text;
-    const regex = new RegExp(`(${query})`, "gi");
-    return text.replace(regex, "<mark>$1</mark>");
+    const regex = new RegExp(`(${query})`, 'gi');
+    return text.replace(regex, '<mark>$1</mark>');
   };
 
-  const isLuxuryCollectible = data.propertytype === "Luxury Collectibles";
+  const isLuxuryCollectible = data.propertytype === 'Luxury Collectibles';
 
   // Determine the location text to display
-  let locationText = "";
+  let locationText = '';
   if (isLuxuryCollectible) {
-    // For Luxury Collectibles, only show community and country
-    const community = data.community || data.location || "N/A";
-    const country = data.country || "N/A";
-    locationText =
-      community !== "N/A" || country !== "N/A"
-        ? `${community}, ${country}`
-        : "Location unavailable";
+    const community = data.community || data.location || 'N/A';
+    const country = data.country || 'N/A';
+    locationText = community !== 'N/A' || country !== 'N/A' ? `${community}, ${country}` : 'Location unavailable';
   } else {
-    // For other property types, include subcommunity
-    locationText = `${data.community || "N/A"}, ${
-      data.subcommunity || "N/A"
-    }, ${data.country || "N/A"}`;
+    locationText = `${data.community || 'N/A'}, ${data.subcommunity || 'N/A'}, ${data.country || 'N/A'}`;
   }
 
-  // If location is unavailable for Luxury Collectibles, fall back to category or description
   const fallbackText =
-    isLuxuryCollectible && locationText === "Location unavailable"
-      ? data.category || data.description || "Luxury Item"
+    isLuxuryCollectible && locationText === 'Location unavailable'
+      ? data.category || data.description || 'Luxury Item'
       : null;
 
   return (
     <div className="bg-white overflow-hidden relative">
-      <div className="relative ">
-        {/* <img
-          src={data.images?.[0] || data.image || FALLBACK_IMAGE}
-          alt={data.title || "Property"}
-          className="w-[100%] h-96 object-cover"
-        /> */}
+      <div className="relative">
         <img
           src={data.images?.[0] || data.image || FALLBACK_IMAGE}
-          alt={data.title || "Property"}
+          alt={data.title || 'Property'}
           className="w-[100%] h-96 object-cover"
         />
-
-        {data.tag === "Featured" && (
+        {data.tag === 'Featured' && (
           <span className="absolute top-2 left-2 bg-white text-black px-2 py-1 text-xs uppercase font-bold rounded-none">
             {data.tag}
           </span>
@@ -165,7 +133,7 @@ const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
           <p
             className="text-lg font-bold text-gray-800"
             dangerouslySetInnerHTML={{
-              __html: highlightText(`AED ${data.price || "N/A"}`, searchQuery),
+              __html: highlightText(`${currency} ${convertPrice(data.price || 0)}`, searchQuery),
             }}
           />
           {!isLuxuryCollectible && (
@@ -173,9 +141,7 @@ const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
               className="text-sm text-gray-600 mt-1"
               dangerouslySetInnerHTML={{
                 __html: highlightText(
-                  `${data.bedrooms || 0} Beds | ${
-                    data.bathrooms || 0
-                  } Baths | ${data.size || 0} sqft`,
+                  `${data.bedrooms || 0} Beds | ${data.bathrooms || 0} Baths | ${data.size || 0} sqft`,
                   searchQuery
                 ),
               }}
@@ -184,7 +150,7 @@ const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
           <p
             className="text-sm text-gray-600 mt-1"
             dangerouslySetInnerHTML={{
-              __html: highlightText(data.propertytype || "N/A", searchQuery),
+              __html: highlightText(data.propertytype || 'N/A', searchQuery),
             }}
           />
           <p
@@ -194,14 +160,6 @@ const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
             }}
           />
         </div>
-        {/* <div className="mt-2">
-          <Link
-            to={`/mansion/${data.reference || "unknown"}`}
-            className="inline-block text-blue-500 hover:underline text-sm font-medium"
-          >
-            View Details
-          </Link>
-        </div> */}
       </div>
       {shareModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
@@ -216,14 +174,12 @@ const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
               <div className="relative w-full h-64">
                 <img
                   src={data.images?.[0] || data.image || FALLBACK_IMAGE}
-                  alt={data.title || "Property"}
+                  alt={data.title || 'Property'}
                   className="w-full h-full object-cover mt-8"
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/55 to-transparent"></div>
                 <div className="absolute top-4 left-4 text-white">
-                  <h2 className="text-2xl text-left font-playfair">
-                    {data.title || "N/A"}
-                  </h2>
+                  <h2 className="text-2xl text-left font-playfair">{data.title || 'N/A'}</h2>
                 </div>
               </div>
             </div>
@@ -231,9 +187,7 @@ const MansionCard = ({ property, mansion, onShare, searchQuery }) => {
               <h3 className="text-lg font-semibold">Share</h3>
               <p className="text-gray-600 mt-2">
                 {data.subtitle ||
-                  `Check out this amazing ${
-                    data.propertytype?.toLowerCase() || "property"
-                  }!`}
+                  `Check out this amazing ${data.propertytype?.toLowerCase() || 'property'}!`}
               </p>
               <div className="flex justify-left space-x-4 mt-4">
                 <button

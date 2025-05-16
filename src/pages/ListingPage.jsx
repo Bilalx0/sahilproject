@@ -37,6 +37,7 @@ import Footer from "../components/Footer";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { Link } from "react-router-dom";
+import PropertyLocationMap from '../components/PropertyLocationMap'
 
 const ListingPage = () => {
   const [phonenumber, setphonenumber] = useState("");
@@ -67,6 +68,7 @@ const ListingPage = () => {
     email: "",
     phone: "",
     message: "",
+    propertyRef: reference,
   });
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -74,12 +76,11 @@ const ListingPage = () => {
   const menuRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Disable body scrolling when modal is open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden"; // Prevent background scrolling
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = "auto"; // Restore scrolling
+      document.body.style.overflow = "auto";
     }
   }, [isOpen]);
 
@@ -90,7 +91,6 @@ const ListingPage = () => {
       : "http://localhost:5001";
   const FALLBACK_IMAGE = "/images/fallback.jpg";
 
-  // Scroll-to-top and outside click handling
   useEffect(() => {
     const handleScroll = () => {
       setShowScrollToTop(window.scrollY > 300);
@@ -110,7 +110,6 @@ const ListingPage = () => {
     };
   }, []);
 
-  // Search with debounce
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -213,7 +212,6 @@ const ListingPage = () => {
     category: "Luxury Villa",
   };
 
-  // Dynamic similar listings
   const similarListings = mansions
     .filter(
       (m) =>
@@ -242,6 +240,7 @@ const ListingPage = () => {
   };
 
   const handlePhoneChange = (value) => {
+    setphonenumber(value);
     setFormData((prev) => ({ ...prev, phone: value }));
   };
 
@@ -261,10 +260,16 @@ const ListingPage = () => {
           email: "",
           phone: "",
           message: "",
+          propertyRef: reference,
         });
+        setphonenumber("");
       } else {
         const result = await response.json();
-        alert(result.error || "Something went wrong.");
+        alert(
+          result.errors
+            ? result.errors.map((err) => err.msg).join(", ")
+            : result.message || "Something went wrong."
+        );
       }
     } catch (error) {
       alert("Failed to submit inquiry. Please try again.");
@@ -341,7 +346,6 @@ const ListingPage = () => {
 
   const isCollectible = property.propertytype === "Luxury Collectibles";
 
-  // Determine the location text for Luxury Collectibles
   let locationText = "";
   if (isCollectible) {
     const community = property.community || property.location || "N/A";
@@ -356,7 +360,6 @@ const ListingPage = () => {
     }, ${property.subcommunity || "N/A"}`;
   }
 
-  // Fallback for Luxury Collectibles if location is unavailable
   const fallbackText =
     isCollectible && locationText === "Location unavailable"
       ? property.category ||
@@ -367,7 +370,6 @@ const ListingPage = () => {
   return (
     <>
       <div className="flex flex-col items-center px-4 md:px-10 lg:px-20 py-12  font-inter">
-        {/* Header with Logo and Search Bar */}
         <div className="flex flex-col md:flex-row items-center justify-between w-full gap-6 relative">
           <Link to="/">
             <img
@@ -394,7 +396,6 @@ const ListingPage = () => {
             >
               <FaSearch className="font-thin hover:text-[#00603A]" />
             </button>
-
             <button className="p-2" onClick={() => setMenuOpen(!menuOpen)}>
               {menuOpen ? (
                 <X className="w-6 h-6 text-[#000000]" />
@@ -404,8 +405,6 @@ const ListingPage = () => {
             </button>
           </div>
         </div>
-
-        {/* Navigation Menu Popup */}
         {menuOpen && (
           <div ref={menuRef} className="mt-2 w-full">
             <div className="bg-white shadow-md p-4 z-50 absolute w-full right-0 px-12 md:px-20">
@@ -463,8 +462,6 @@ const ListingPage = () => {
             </div>
           </div>
         )}
-
-        {/* Search Results */}
         {hasSearched && searchQuery.trim() && (
           <div className="w-full mx-auto mt-8">
             <h2 className="text-2xl text-[#00603A] mb-6 font-inter text-center">
@@ -509,8 +506,6 @@ const ListingPage = () => {
             )}
           </div>
         )}
-
-        {/* Property Title and Summary */}
         <div className="flex flex-col md:space-x-6 mt-4 py-6 md:mt-6 space-x-2 md:space-y-0 text-center">
           <h3 className="text-3xl pt-6 font-playfair text-[#000000] text-center mb-8 bg-white">
             {property.title || "Untitled Property"}
@@ -527,8 +522,6 @@ const ListingPage = () => {
                 } sq. ft. plot`}
           </p>
         </div>
-
-        {/* Hero Image with ImageGallery */}
         <div className="relative w-full h-[280px] md:h-screen">
           <img
             src={property.images?.[0] || FALLBACK_IMAGE}
@@ -542,10 +535,7 @@ const ListingPage = () => {
             Show All Photos
           </button>
         </div>
-
-        {/* Main Content */}
         <div className="w-full mx-auto py-20 lg:flex lg:justify-between border-b border-black">
-          {/* Left Section */}
           <div className="w-full lg:w-7/12">
             {isCollectible ? (
               <div className="bg-white mb-6">
@@ -575,7 +565,6 @@ const ListingPage = () => {
                 >
                   {showFullDescription ? "Show less" : "Show full description"}
                 </button>
-                {/* Collectible Details in place of Features & Amenities */}
                 <div className="border-t border-b border-[#00603A] mt-8 pb-8 py-6">
                   <h1 className="text-3xl font-playfair text-[#00603A]">
                     Collectible Details
@@ -637,8 +626,6 @@ const ListingPage = () => {
                 >
                   {showFullDescription ? "Show less" : "Show full description"}
                 </button>
-
-                {/* Features & Amenities */}
                 <div className="border-t border-b border-[#00603A] mt-8 pb-8 py-6">
                   <h1 className="text-3xl font-playfair text-[#00603A]">
                     Features & Amenities
@@ -649,7 +636,6 @@ const ListingPage = () => {
                         {column.map((amenity, index) => (
                           <li key={index} className="flex items-center">
                             <Check className="h-4 w-4 text-[#00603A] mr-1 flex-shrink-0" />
-
                             <span>{amenity}</span>
                           </li>
                         ))}
@@ -657,26 +643,11 @@ const ListingPage = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* Location Map */}
                 <div className="text-start mt-4">
-                  <h2 className="text-3xl mb-8 font-playfair text-[#00603A]">
-                    Location Map
-                  </h2>
-                  <div className="w-full relative">
-                    <iframe
-                      className="w-full h-64 border-0 rounded-none"
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3623.496236789558!2d55.270782315318835!3d25.2048499838886!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3e5f4347f51ff62d%3A0x9e2df8d4d7e8f12a!2sDubai!5e0!3m2!1sen!2sae!4v1631234567890!5m2!1sen!2sae"
-                      allowFullScreen
-                      loading="lazy"
-                      title="map"
-                    ></iframe>
-                  </div>
+                  <PropertyLocationMap property={property} />
                 </div>
               </>
             )}
-
-            {/* Share Listing Button */}
             <div className="text-center mt-8">
               <button
                 onClick={() => handleShareClick(property)}
@@ -693,8 +664,6 @@ const ListingPage = () => {
               </button>
             </div>
           </div>
-
-          {/* Right Section (Agent Form) */}
           <div className="lg:w-5/12 ml-0 md:ml-12 lg:mt-0">
             <div className="sticky top-20">
               {isSubmitted ? (
@@ -796,7 +765,7 @@ const ListingPage = () => {
                         placeholder="Phone number"
                         aria-label="Phone number"
                         value={phonenumber}
-                        onChange={handleChangenumber}
+                        onChange={handlePhoneChange}
                         inputProps={{
                           required: true,
                         }}
@@ -822,8 +791,6 @@ const ListingPage = () => {
             </div>
           </div>
         </div>
-
-        {/* Similar Listings */}
         <div className="w-full mx-auto mt-8">
           <h2 className="text-3xl text-center mb-12 mt-8 font-playfair text-[#00603A]">
             Similar {isCollectible ? "Collectibles" : "Properties"} Listing
@@ -856,8 +823,6 @@ const ListingPage = () => {
             </>
           )}
         </div>
-
-        {/* Share Modal */}
         {shareModalOpen && selectedMansion && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
             <div className="bg-white shadow-lg max-w-md w-full">
@@ -928,8 +893,6 @@ const ListingPage = () => {
             </div>
           </div>
         )}
-
-        {/* Scroll to Top */}
         {showScrollToTop && (
           <button
             onClick={scrollToTop}
@@ -941,19 +904,14 @@ const ListingPage = () => {
         {isOpen && (
           <div className="w-full absolute bottom-4 left-4">
             <div className="fixed inset-0 flex justify-center items-start z-50  bg-white overflow-y-auto">
-              {/* Fixed Close Button */}
               <button
                 onClick={() => setIsOpen(false)}
                 className="fixed top-4 right-8 text-[#000000] hover:text-[#00603A] px-3 py-1 rounded-md text-xl z-50"
               >
                 ✕
               </button>
-
-              {/* Modal Content (Moved Down) */}
               <div className="relative p-5 w-full mt-16 mb-8  ">
-                {/* Images and Text Layout */}
                 <div className="flex flex-col md:flex-row gap-4 md:h-auto">
-                  {/* 🟢 Images Container (First on mobile, second on desktop) */}
                   <div className="flex flex-col w-full md:w-[75%] order-1 md:order-2">
                     {property.images.map((img, index) => (
                       <img
@@ -964,14 +922,11 @@ const ListingPage = () => {
                       />
                     ))}
                   </div>
-
-                  {/* 🟢 Text Container (Second on mobile, first on desktop) */}
                   <div className="w-full md:w-[25%] p-4 md:sticky md:top-4 self-start order-2 md:order-1">
                     <div className="flex flex-col  mt-4 py-6 md:mt-6  md:space-y-0">
                       <h3 className="text-3xl font-playfair break-words text-[#000000] mb-8 bg-white">
                         {property.title || "Untitled Property"}
                       </h3>
-
                       <p className="text-base break-words font-inter pt-8 border-t border-[#00603A]">
                         {property.propertytype || "Property Type"} |{" "}
                         {property.bedrooms || "Bedrooms"} beds |{" "}
@@ -980,7 +935,6 @@ const ListingPage = () => {
                         {property.plotarea || "Plot Area"} sq. ft. plot
                       </p>
                     </div>
-
                     <div className="flex gap-2 mt-4 border-b pb-4">
                       <a
                         href={`https://wa.me/${

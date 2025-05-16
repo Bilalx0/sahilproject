@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 const HomePageForm = () => {
+  
+   const { api } = useAuth();
+
   // Existing state variables from HomePageForm
   const [heroData, setHeroData] = useState({
     _id: null,
@@ -142,6 +145,8 @@ const HomePageForm = () => {
   const [iconicExistingSignupImage, setIconicExistingSignupImage] =
     useState(null);
 
+ 
+
   const BASE_URL =
     process.env.NODE_ENV === "production"
       ? "https://backend-5kh4.onrender.com"
@@ -150,7 +155,7 @@ const HomePageForm = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const propertiesResponse = await axios.get(
+        const propertiesResponse = await api.get(
           `${BASE_URL}/api/properties`
         );
         const references = propertiesResponse.data
@@ -158,7 +163,7 @@ const HomePageForm = () => {
           .filter((ref) => ref);
         setValidReferences(references);
 
-        const heroResponse = await axios.get(`${BASE_URL}/api/hero`);
+        const heroResponse = await api.get(`${BASE_URL}/api/hero`);
         if (heroResponse.data) {
           setHeroData({
             _id: heroResponse.data._id,
@@ -169,7 +174,7 @@ const HomePageForm = () => {
           setHeroExistingImage(heroResponse.data.image || null);
         }
 
-        const featuredResponse = await axios.get(`${BASE_URL}/api/featured`);
+        const featuredResponse = await api.get(`${BASE_URL}/api/featured`);
         setFeaturedProperties(featuredResponse.data || null);
         if (featuredResponse.data && Array.isArray(featuredResponse.data)) {
           setFeaturedData({
@@ -181,7 +186,7 @@ const HomePageForm = () => {
           });
         }
 
-        const mansionResponse = await axios.get(`${BASE_URL}/api/mansion`);
+        const mansionResponse = await api.get(`${BASE_URL}/api/mansion`);
         if (mansionResponse.data) {
           setMansionData((prev) => ({
             ...prev,
@@ -190,7 +195,7 @@ const HomePageForm = () => {
             btntext: mansionResponse.data.btntext || "",
           }));
         }
-        const mansionFeaturedResponse = await axios.get(
+        const mansionFeaturedResponse = await api.get(
           `${BASE_URL}/api/mansion/featured`
         );
         setMansionFeaturedProperties(mansionFeaturedResponse.data || null);
@@ -207,7 +212,7 @@ const HomePageForm = () => {
           }));
         }
 
-        const penthouseResponse = await axios.get(`${BASE_URL}/api/penthouse`);
+        const penthouseResponse = await api.get(`${BASE_URL}/api/penthouse`);
         if (penthouseResponse.data) {
           setPenthouseData((prev) => ({
             ...prev,
@@ -216,7 +221,7 @@ const HomePageForm = () => {
             btntext: penthouseResponse.data.btntext || "",
           }));
         }
-        const penthouseFeaturedResponse = await axios.get(
+        const penthouseFeaturedResponse = await api.get(
           `${BASE_URL}/api/penthouse/featured`
         );
         setPenthouseFeaturedProperties(penthouseFeaturedResponse.data || null);
@@ -233,7 +238,7 @@ const HomePageForm = () => {
           }));
         }
 
-        const collectiblesResponse = await axios.get(
+        const collectiblesResponse = await api.get(
           `${BASE_URL}/api/collectibles`
         );
         if (collectiblesResponse.data) {
@@ -244,7 +249,7 @@ const HomePageForm = () => {
             btntext: collectiblesResponse.data.btntext || "",
           }));
         }
-        const collectiblesFeaturedResponse = await axios.get(
+        const collectiblesFeaturedResponse = await api.get(
           `${BASE_URL}/api/collectibles/featured`
         );
         setCollectiblesFeaturedProperties(
@@ -263,7 +268,7 @@ const HomePageForm = () => {
           }));
         }
 
-        const magazineResponse = await axios.get(`${BASE_URL}/api/magazine`);
+        const magazineResponse = await api.get(`${BASE_URL}/api/magazine`);
         if (magazineResponse.data) {
           setMagazineData({
             _id: magazineResponse.data._id,
@@ -274,7 +279,7 @@ const HomePageForm = () => {
           setMagazineExistingImage(magazineResponse.data.image || null);
         }
 
-        const linksResponse = await axios.get(`${BASE_URL}/api/links`);
+        const linksResponse = await api.get(`${BASE_URL}/api/links`);
         if (
           linksResponse.data &&
           Array.isArray(linksResponse.data) &&
@@ -325,7 +330,7 @@ const HomePageForm = () => {
         }
 
         // In the useEffect function, replace the iconic section code with this version that handles an array response
-        const iconicResponse = await axios.get(`${BASE_URL}/api/iconic`);
+        const iconicResponse = await api.get(`${BASE_URL}/api/iconic`);
         if (iconicResponse.data) {
           console.log(
             "Iconic API Response:",
@@ -356,7 +361,7 @@ const HomePageForm = () => {
           setIconicExistingSignupImage(iconicResponseData.photoSignup || null);
         }
 
-        const reviewsResponse = await axios.get(
+        const reviewsResponse = await api.get(
           `${BASE_URL}/api/reviews/admin`,
           {
             headers: {
@@ -440,7 +445,7 @@ const HomePageForm = () => {
           "Updating existing iconic section with ID:",
           iconicData._id
         );
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/iconic/${iconicData._id}`,
           formData,
           {
@@ -457,7 +462,7 @@ const HomePageForm = () => {
         }));
       } else {
         console.log("Creating new iconic section");
-        response = await axios.post(`${BASE_URL}/api/iconic`, formData, {
+        response = await api.post(`${BASE_URL}/api/iconic`, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
@@ -471,7 +476,7 @@ const HomePageForm = () => {
 
       // Also update the refresh code in handleIconicSubmit function
       // Replace the refresh section with this:
-      const refreshResponse = await axios.get(`${BASE_URL}/api/iconic`);
+      const refreshResponse = await api.get(`${BASE_URL}/api/iconic`);
       console.log("Refreshed data:", refreshResponse.data);
 
       if (refreshResponse.data) {
@@ -526,7 +531,7 @@ const HomePageForm = () => {
     setMessages((prev) => ({ ...prev, iconic: "" }));
 
     try {
-      const response = await axios.put(
+      const response = await api.put(
         `${BASE_URL}/api/iconic/${iconicData._id}`,
         { removePhotoHome: true },
         {
@@ -563,7 +568,7 @@ const HomePageForm = () => {
     setMessages((prev) => ({ ...prev, iconic: "" }));
 
     try {
-      const response = await axios.put(
+      const response = await api.put(
         `${BASE_URL}/api/iconic/${iconicData._id}`,
         { removePhotoSignup: true },
         {
@@ -629,7 +634,7 @@ const HomePageForm = () => {
     try {
       let response;
       if (heroData._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/hero/${heroData._id}`,
           formData,
           {
@@ -644,7 +649,7 @@ const HomePageForm = () => {
           hero: "Hero section updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/hero`, formData, {
+        response = await api.post(`${BASE_URL}/api/hero`, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
@@ -681,7 +686,7 @@ const HomePageForm = () => {
     setMessages((prev) => ({ ...prev, hero: "" }));
 
     try {
-      const response = await axios.put(
+      const response = await api.put(
         `${BASE_URL}/api/hero/${heroData._id}`,
         { removeImage: true },
         {
@@ -746,7 +751,7 @@ const HomePageForm = () => {
     try {
       let response;
       if (featuredData._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/featured/${featuredData._id}`,
           { references },
           {
@@ -760,7 +765,7 @@ const HomePageForm = () => {
           featured: "Featured properties updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/featured`, { references });
+        response = await api.post(`${BASE_URL}/api/featured`, { references });
         setMessages((prev) => ({
           ...prev,
           featured: "Featured properties saved successfully!",
@@ -787,7 +792,7 @@ const HomePageForm = () => {
           "",
       });
 
-      const updatedFeaturedPropertiesResponse = await axios.get(
+      const updatedFeaturedPropertiesResponse = await api.get(
         `${BASE_URL}/api/featured`
       );
       setFeaturedProperties(updatedFeaturedPropertiesResponse.data || null);
@@ -821,7 +826,7 @@ const HomePageForm = () => {
     try {
       let response;
       if (mansionData._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/mansion/${mansionData._id}`,
           {
             description: mansionData.description,
@@ -838,7 +843,7 @@ const HomePageForm = () => {
           mansionContent: "Mansion content updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/mansion`, {
+        response = await api.post(`${BASE_URL}/api/mansion`, {
           description: mansionData.description,
           btntext: mansionData.btntext,
         });
@@ -903,7 +908,7 @@ const HomePageForm = () => {
       let response;
       const mansionFeatured = mansionFeaturedProperties;
       if (mansionFeatured && mansionFeatured._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/mansion/featured/${mansionFeatured._id}`,
           { references },
           {
@@ -917,7 +922,7 @@ const HomePageForm = () => {
           mansionReferences: "Mansion references updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/mansion/featured`, {
+        response = await api.post(`${BASE_URL}/api/mansion/featured`, {
           references,
         });
         setMessages((prev) => ({
@@ -946,7 +951,7 @@ const HomePageForm = () => {
           "",
       }));
 
-      const updatedMansionFeaturedResponse = await axios.get(
+      const updatedMansionFeaturedResponse = await api.get(
         `${BASE_URL}/api/mansion/featured`
       );
       setMansionFeaturedProperties(updatedMansionFeaturedResponse.data || null);
@@ -980,7 +985,7 @@ const HomePageForm = () => {
     try {
       let response;
       if (penthouseData._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/penthouse/${penthouseData._id}`,
           {
             description: penthouseData.description,
@@ -997,7 +1002,7 @@ const HomePageForm = () => {
           penthouseContent: "Penthouse content updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/penthouse`, {
+        response = await api.post(`${BASE_URL}/api/penthouse`, {
           description: penthouseData.description,
           btntext: penthouseData.btntext,
         });
@@ -1062,7 +1067,7 @@ const HomePageForm = () => {
       let response;
       const penthouseFeatured = penthouseFeaturedProperties;
       if (penthouseFeatured && penthouseFeatured._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/penthouse/featured/${penthouseFeatured._id}`,
           { references },
           {
@@ -1076,7 +1081,7 @@ const HomePageForm = () => {
           penthouseReferences: "Penthouse references updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/penthouse/featured`, {
+        response = await api.post(`${BASE_URL}/api/penthouse/featured`, {
           references,
         });
         setMessages((prev) => ({
@@ -1105,7 +1110,7 @@ const HomePageForm = () => {
           "",
       }));
 
-      const updatedPenthouseFeaturedResponse = await axios.get(
+      const updatedPenthouseFeaturedResponse = await api.get(
         `${BASE_URL}/api/penthouse/featured`
       );
       setPenthouseFeaturedProperties(
@@ -1141,7 +1146,7 @@ const HomePageForm = () => {
     try {
       let response;
       if (collectiblesData._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/collectibles/${collectiblesData._id}`,
           {
             description: collectiblesData.description,
@@ -1158,7 +1163,7 @@ const HomePageForm = () => {
           collectiblesContent: "Collectibles content updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/collectibles`, {
+        response = await api.post(`${BASE_URL}/api/collectibles`, {
           description: collectiblesData.description,
           btntext: collectiblesData.btntext,
         });
@@ -1223,7 +1228,7 @@ const HomePageForm = () => {
       let response;
       const collectiblesFeatured = collectiblesFeaturedProperties;
       if (collectiblesFeatured && collectiblesFeatured._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/collectibles/featured/${collectiblesFeatured._id}`,
           { references },
           {
@@ -1238,7 +1243,7 @@ const HomePageForm = () => {
             "Collectibles references updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/collectibles/featured`, {
+        response = await api.post(`${BASE_URL}/api/collectibles/featured`, {
           references,
         });
         setMessages((prev) => ({
@@ -1267,7 +1272,7 @@ const HomePageForm = () => {
           "",
       }));
 
-      const updatedCollectiblesFeaturedResponse = await axios.get(
+      const updatedCollectiblesFeaturedResponse = await api.get(
         `${BASE_URL}/api/collectibles/featured`
       );
       setCollectiblesFeaturedProperties(
@@ -1327,7 +1332,7 @@ const HomePageForm = () => {
     try {
       let response;
       if (magazineData._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/magazine/${magazineData._id}`,
           formData,
           {
@@ -1342,7 +1347,7 @@ const HomePageForm = () => {
           magazine: "Magazine section updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/magazine`, formData, {
+        response = await api.post(`${BASE_URL}/api/magazine`, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
@@ -1380,7 +1385,7 @@ const HomePageForm = () => {
     setMessages((prev) => ({ ...prev, magazine: "" }));
 
     try {
-      const response = await axios.put(
+      const response = await api.put(
         `${BASE_URL}/api/magazine/${magazineData._id}`,
         { removeImage: true },
         {
@@ -1448,7 +1453,7 @@ const HomePageForm = () => {
     try {
       let response;
       if (linksData._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/links/${linksData._id}`,
           linksPayload,
           {
@@ -1462,14 +1467,14 @@ const HomePageForm = () => {
           links: "Links updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/links`, linksPayload);
+        response = await api.post(`${BASE_URL}/api/links`, linksPayload);
         setMessages((prev) => ({
           ...prev,
           links: "Links saved successfully!",
         }));
       }
 
-      const updatedLinksResponse = await axios.get(`${BASE_URL}/api/links`);
+      const updatedLinksResponse = await api.get(`${BASE_URL}/api/links`);
       if (
         updatedLinksResponse.data &&
         Array.isArray(updatedLinksResponse.data) &&
@@ -1537,7 +1542,7 @@ const HomePageForm = () => {
     try {
       let response;
       if (reviewData._id) {
-        response = await axios.put(
+        response = await api.put(
           `${BASE_URL}/api/reviews/${reviewData._id}`,
           reviewPayload,
           {
@@ -1551,7 +1556,7 @@ const HomePageForm = () => {
           review: "Review updated successfully!",
         }));
       } else {
-        response = await axios.post(`${BASE_URL}/api/reviews`, reviewPayload, {
+        response = await api.post(`${BASE_URL}/api/reviews`, reviewPayload, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -1562,7 +1567,7 @@ const HomePageForm = () => {
         }));
       }
 
-      const updatedReviews = await axios.get(`${BASE_URL}/api/reviews/admin`, {
+      const updatedReviews = await api.get(`${BASE_URL}/api/reviews/admin`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -1602,13 +1607,13 @@ const HomePageForm = () => {
     setMessages((prev) => ({ ...prev, review: "" }));
 
     try {
-      await axios.delete(`${BASE_URL}/api/reviews/${reviewId}`, {
+      await api.delete(`${BASE_URL}/api/reviews/${reviewId}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
-      const updatedReviews = await axios.get(`${BASE_URL}/api/reviews/admin`, {
+      const updatedReviews = await api.get(`${BASE_URL}/api/reviews/admin`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },

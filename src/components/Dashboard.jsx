@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "../assests/TMM_Logo_Non-responsive.svg";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import axios from "axios";
+import { useAuth } from "../context/AuthContext"; // Import useAuth
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -15,6 +15,7 @@ const Dashboard = ({
   itemsPerPage = 5,
   onPageChange = () => {},
 }) => {
+  const { api } = useAuth(); // Access authenticated api instance
   const [inquiries, setInquiries] = useState([]);
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,12 +50,11 @@ const Dashboard = ({
   };
 
   const handleDelete = async (id, type, endpoint) => {
-    if (!window.confirm(`Are you sure you want to delete this ${type}?`))
-      return;
+    if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
 
     try {
       setLoading(true);
-      await axios.delete(`${BASE_URL}${endpoint}/${id}`);
+      await api.delete(`${endpoint}/${id}`); // Use api instead of axios
       toast.success(`${type} deleted successfully`);
 
       if (type === "Inquiry") {
@@ -64,9 +64,7 @@ const Dashboard = ({
       } else if (type === "Magazine Article") {
         setMagazineDetails(magazineDetails.filter((item) => item.id !== id));
       } else if (type === "Luxury Collectible") {
-        setLuxuryCollectibles(
-          luxuryCollectibles.filter((item) => item.id !== id)
-        );
+        setLuxuryCollectibles(luxuryCollectibles.filter((item) => item.id !== id));
       } else if (["Mansion", "Penthouse"].includes(type)) {
         setProperties(properties.filter((item) => item.id !== id));
       } else if (type === "Development") {
@@ -77,9 +75,7 @@ const Dashboard = ({
     } catch (error) {
       console.error(`Error deleting ${type}:`, error);
       toast.error(
-        `Failed to delete ${type}: ${
-          error.response?.data?.message || error.message
-        }`
+        `Failed to delete ${type}: ${error.response?.data?.message || error.message}`
       );
     } finally {
       setLoading(false);
@@ -102,12 +98,13 @@ const Dashboard = ({
   const handleAddClick = (type) => {
     console.log(`Add new ${type}`);
     if (type === "development") {
-      navigate("/developmentform");
+      navigate("/newdevelopmentform");
     } else if (type === "user") {
       navigate("/userform");
     }
   };
 
+  // Filtering logic remains unchanged
   const filteredInquiries = inquiries.filter((inquiry) => {
     const matchesSearch =
       inquiry.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,19 +113,13 @@ const Dashboard = ({
       inquiry.reference?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDate =
       !selectedDate ||
-      new Date(inquiry.createdAt).toDateString() ===
-        selectedDate.toDateString();
+      new Date(inquiry.createdAt).toDateString() === selectedDate.toDateString();
     return matchesSearch && matchesDate;
   });
 
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentPosts = filteredInquiries.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
-  const calculatedTotalPages = Math.ceil(
-    filteredInquiries.length / itemsPerPage
-  );
+  const currentPosts = filteredInquiries.slice(startIndex, startIndex + itemsPerPage);
+  const calculatedTotalPages = Math.ceil(filteredInquiries.length / itemsPerPage);
 
   const filteredProperties = properties.filter((property) => {
     const matchesSearch =
@@ -136,30 +127,22 @@ const Dashboard = ({
         ? property.email?.toLowerCase().includes(searchTerm.toLowerCase())
         : property.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           property.reference?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      filterCategory === "All" || property.category === filterCategory;
+    const matchesCategory = filterCategory === "All" || property.category === filterCategory;
     const matchesDate =
       !selectedDate ||
-      new Date(property.createdAt || property.createdTime).toDateString() ===
-        selectedDate.toDateString();
-    return (
-      matchesSearch &&
-      (viewType === "property" ? matchesCategory && matchesDate : matchesDate)
-    );
+      new Date(property.createdAt || property.createdTime).toDateString() === selectedDate.toDateString();
+    return matchesSearch && (viewType === "property" ? matchesCategory && matchesDate : matchesDate);
   });
 
-  const filteredLuxuryCollectibles = luxuryCollectibles.filter(
-    (collectible) => {
-      const matchesSearch =
-        collectible.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        collectible.reference?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDate =
-        !selectedDate ||
-        new Date(collectible.createdAt).toDateString() ===
-          selectedDate.toDateString();
-      return matchesSearch && matchesDate;
-    }
-  );
+  const filteredLuxuryCollectibles = luxuryCollectibles.filter((collectible) => {
+    const matchesSearch =
+      collectible.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      collectible.reference?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDate =
+      !selectedDate ||
+      new Date(collectible.createdAt).toDateString() === selectedDate.toDateString();
+    return matchesSearch && matchesDate;
+  });
 
   const filteredMagazineDetails = magazineDetails.filter((magazine) => {
     const matchesSearch =
@@ -177,8 +160,7 @@ const Dashboard = ({
       development.link?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDate =
       !selectedDate ||
-      new Date(development.createdAt).toDateString() ===
-        selectedDate.toDateString();
+      new Date(development.createdAt).toDateString() === selectedDate.toDateString();
     return matchesSearch && matchesDate;
   });
 
@@ -190,28 +172,29 @@ const Dashboard = ({
     return matchesSearch;
   });
 
+  // Updated useEffect with api
   useEffect(() => {
     const fetchInquiries = async () => {
       try {
-        const response = await axios.get(`${BASE_URL}/api/inquiries`);
+        const response = await api.get("/api/inquiries"); // Use api instead of axios
         setInquiries(response.data);
       } catch (error) {
         console.error("Error fetching inquiries:", error);
-        setError(error.message);
+        setError(error.response?.data?.message || error.message);
       }
     };
 
     if (viewType === "leads") {
       fetchInquiries();
     }
-  }, [viewType, BASE_URL]);
+  }, [viewType, api]);
 
   useEffect(() => {
     const fetchNewsletter = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`${BASE_URL}/api/newsletter`);
+        const response = await api.get("/api/newsletter"); // Use api
         const transformedData = response.data.map((item) => ({
           id: item._id,
           email: item.email || "N/A",
@@ -221,7 +204,7 @@ const Dashboard = ({
         setProperties(transformedData);
       } catch (error) {
         console.error("Error fetching newsletter:", error);
-        setError(error.message);
+        setError(error.response?.data?.message || error.message);
       } finally {
         setLoading(false);
       }
@@ -230,21 +213,20 @@ const Dashboard = ({
     if (viewType === "property") {
       fetchNewsletter();
     }
-  }, [viewType, BASE_URL]);
+  }, [viewType, api]);
 
   useEffect(() => {
     const fetchProperties = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`${BASE_URL}/api/properties`);
+        const response = await api.get("/api/properties"); // Use api
         const data = response.data;
 
         const transformedData = data
           .filter((item) => {
             if (viewType === "mansions") return item.propertytype === "Mansion";
-            if (viewType === "penthouses")
-              return item.propertytype === "Penthouse";
+            if (viewType === "penthouses") return item.propertytype === "Penthouse";
             return false;
           })
           .map((item) => ({
@@ -261,7 +243,7 @@ const Dashboard = ({
         setProperties(transformedData);
       } catch (error) {
         console.error("Error fetching properties:", error);
-        setError(error.message);
+        setError(error.response?.data?.message || error.message);
       } finally {
         setLoading(false);
       }
@@ -270,14 +252,14 @@ const Dashboard = ({
     if (["mansions", "penthouses"].includes(viewType)) {
       fetchProperties();
     }
-  }, [viewType, BASE_URL]);
+  }, [viewType, api]);
 
   useEffect(() => {
     const fetchLuxuryCollectibles = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`${BASE_URL}/api/properties`);
+        const response = await api.get("/api/properties"); // Use api
         const data = response.data;
 
         const transformedData = data
@@ -293,7 +275,7 @@ const Dashboard = ({
         setLuxuryCollectibles(transformedData);
       } catch (error) {
         console.error("Error fetching luxury collectibles:", error);
-        setError(error.message);
+        setError(error.response?.data?.message || error.message);
       } finally {
         setLoading(false);
       }
@@ -302,14 +284,14 @@ const Dashboard = ({
     if (viewType === "luxurycollectibles") {
       fetchLuxuryCollectibles();
     }
-  }, [viewType, BASE_URL]);
+  }, [viewType, api]);
 
   useEffect(() => {
     const fetchMagazineDetails = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`${BASE_URL}/api/magazineDetails`);
+        const response = await api.get("/api/magazineDetails"); // Use api
         const transformedData = response.data.map((item) => ({
           id: item._id,
           author: item.author || "N/A",
@@ -322,7 +304,7 @@ const Dashboard = ({
         setMagazineDetails(transformedData);
       } catch (error) {
         console.error("Error fetching magazine details:", error);
-        setError(error.message);
+        setError(error.response?.data?.message || error.message);
       } finally {
         setLoading(false);
       }
@@ -331,18 +313,18 @@ const Dashboard = ({
     if (viewType === "magazine") {
       fetchMagazineDetails();
     }
-  }, [viewType, BASE_URL]);
+  }, [viewType, api]);
 
   useEffect(() => {
     const fetchDevelopments = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`${BASE_URL}/api/developments`);
+        const response = await api.get("/api/developments"); // Use api
         setDevelopments(response.data);
       } catch (error) {
         console.error("Error fetching developments:", error);
-        setError(error.message);
+        setError(error.response?.data?.message || error.message);
       } finally {
         setLoading(false);
       }
@@ -351,16 +333,14 @@ const Dashboard = ({
     if (viewType === "newDevelopments") {
       fetchDevelopments();
     }
-  }, [viewType, BASE_URL]);
+  }, [viewType, api]);
 
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(
-          `${BASE_URL}/api/dashboard/superadmin`
-        );
+        const response = await api.get("/api/dashboard/superadmin"); // Use api
         setUsers(response.data.users);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -373,8 +353,7 @@ const Dashboard = ({
     if (viewType === "userdata") {
       fetchUsers();
     }
-  }, [viewType, BASE_URL]);
-
+  }, [viewType, api]);
   return (
     <div className="flex-1 bg-[#F9F9F8]">
       <ToastContainer />

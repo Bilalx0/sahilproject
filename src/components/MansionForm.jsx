@@ -1,11 +1,14 @@
+// src/components/MansionForm.js
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 import imageCompression from "browser-image-compression";
 
 const MansionForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, api } = useAuth();
+
   const [mansionData, setMansionData] = useState({
     reference: "",
     propertytype: "",
@@ -43,12 +46,7 @@ const MansionForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [descriptionCharCount, setDescriptionCharCount] = useState(0); // New state for character count
-
-  const BASE_URL =
-    process.env.NODE_ENV === "production"
-      ? "https://backend-5kh4.onrender.com"
-      : "http://localhost:5001";
+  const [descriptionCharCount, setDescriptionCharCount] = useState(0);
 
   const compressionOptions = {
     maxSizeMB: 1,
@@ -57,10 +55,14 @@ const MansionForm = () => {
   };
 
   useEffect(() => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
     if (id) {
       const fetchProperty = async () => {
         try {
-          const response = await axios.get(`${BASE_URL}/api/propertyDetail/${id}`);
+          const response = await api.get(`/api/propertyDetail/${id}`);
           const data = response.data;
           const normalizedData = {
             ...data,
@@ -78,19 +80,22 @@ const MansionForm = () => {
             tag: data.propertytype === "Luxury Collectibles" ? "" : data.tag || "",
             status: data.propertytype === "Luxury Collectibles" ? "" : data.status || "",
             amenities: data.propertytype === "Luxury Collectibles" ? "" : (Array.isArray(data.amenities) ? data.amenities.join(", ") : data.amenities || ""),
-            description: data.description || "", // Ensure description is preserved
+            description: data.description || "",
           };
           setMansionData(normalizedData);
           setExistingImages(data.images || []);
-          setDescriptionCharCount(data.description ? data.description.length : 0); // Initialize char count
+          setDescriptionCharCount(data.description ? data.description.length : 0);
         } catch (error) {
           console.error("Error fetching property:", error);
           setSubmitError("Failed to load property data.");
+          if (error.response?.status === 403) {
+            navigate("/dashboard");
+          }
         }
       };
       fetchProperty();
     }
-  }, [id]);
+  }, [id, user, api, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -98,7 +103,6 @@ const MansionForm = () => {
       ...prev,
       [name]: value,
     }));
-    // Update character count for description
     if (name === "description") {
       setDescriptionCharCount(value.length);
     }
@@ -120,7 +124,7 @@ const MansionForm = () => {
     const compressedFiles = await Promise.all(
       files.map(async (file) => await compressImage(file))
     );
-    setImages(compressedFiles);
+    setImages((prev) => [...prev, ...compressedFiles]);
   };
 
   const handleAgentImageChange = async (e) => {
@@ -133,6 +137,10 @@ const MansionForm = () => {
 
   const handleRemoveExistingImage = (index) => {
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveNewImage = (index) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
@@ -187,13 +195,10 @@ const MansionForm = () => {
         });
       }
 
-      // Append fields to FormData, preserving newlines in description
       fieldsToInclude.forEach((key) => {
         let value = normalizedData[key];
         if (key === "description") {
-          // Ensure newlines are preserved
           value = value || "";
-          console.log("Description before submission:", value); // Debug log
         } else {
           value = value !== null && value !== undefined ? value.toString() : "";
         }
@@ -212,24 +217,19 @@ const MansionForm = () => {
         formData.append("agentimage", agentimage);
       }
 
-      const formDataEntries = Object.fromEntries(formData);
-      console.log("Sending form data:", formDataEntries);
-
       let response;
       if (id) {
-        response = await axios.put(`${BASE_URL}/api/propertyDetail/${id}`, formData, {
+        response = await api.put(`/api/propertyDetail/${id}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
           timeout: 30000,
         });
       } else {
-        response = await axios.post(`${BASE_URL}/api/propertyDetail`, formData, {
+        response = await api.post("/api/propertyDetail", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
 
-      console.log("Submission successful:", response.data);
       setSubmitSuccess(true);
-
       if (!id) {
         setMansionData({
           reference: "",
@@ -264,24 +264,25 @@ const MansionForm = () => {
         setImages([]);
         setExistingImages([]);
         setAgentImage(null);
-        setDescriptionCharCount(0); // Reset char count
+        setDescriptionCharCount(0);
         document.querySelectorAll('input[type="file"]').forEach((input) => (input.value = ""));
       } else {
-        navigate(`/dashboard`);
+        navigate("/dashboard");
       }
     } catch (error) {
-      console.error("Submission error details:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
+      console.error("Submission error:", error);
       const errorMessage =
         error.response?.data?.message || error.message || "Failed to submit form.";
       setSubmitError(errorMessage);
+      if (error.response?.status === 403) {
+        navigate("/dashboard");
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (!user) return null;
 
   const isLuxuryCollectibles = mansionData.propertytype === "Luxury Collectibles";
 
@@ -431,7 +432,7 @@ const MansionForm = () => {
                   <input
                     type="text"
                     name="subcommunity"
-                    placeholder="Add Sub community"
+                    placeholder="Add Sub Community"
                     value={mansionData.subcommunity}
                     onChange={handleChange}
                     className="w-full p-2 border border-gray-300 outline-none focus:border-green-500"
@@ -503,12 +504,12 @@ const MansionForm = () => {
                 onChange={handleChange}
                 className="w-full p-2 border border-gray-300 outline-none focus:border-green-500"
                 required
-                style={{ whiteSpace: "pre-wrap" }} // Preserve newlines in display
+                style={{ whiteSpace: "pre-wrap" }}
               ></textarea>
             </div>
             {!isLuxuryCollectibles && (
               <div className="form-group md:col-span-2">
-                <label className="block text-gray-700 mb-2">Amenities*</label>
+                <label className="block text-gray-700 mb-2">Amenities</label>
                 <textarea
                   rows="4"
                   name="amenities"
@@ -528,29 +529,6 @@ const MansionForm = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="form-group">
               <label className="block text-gray-700 mb-2">Property Images{!id && "*"}</label>
-              {existingImages.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600">Existing Images:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {existingImages.map((imageUrl, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={imageUrl}
-                          alt={`Property ${index}`}
-                          className="w-full h-24 object-cover rounded"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExistingImage(index)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
               <input
                 type="file"
                 name="images"
@@ -560,14 +538,43 @@ const MansionForm = () => {
                 className="w-full p-2 border border-gray-300 outline-none focus:border-green-500"
                 required={!id && existingImages.length === 0}
               />
-              {images.length > 0 && (
-                <div className="mt-2 text-sm text-gray-600">
-                  <p>Selected new images (compressed):</p>
-                  <ul className="list-disc pl-5">
-                    {images.map((image, index) => (
-                      <li key={index}>{image.name}</li>
+              {(existingImages.length > 0 || images.length > 0) && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600">Image Previews:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-2">
+                    {existingImages.map((imageUrl, index) => (
+                      <div key={`existing-${index}`} className="relative">
+                        <img
+                          src={imageUrl}
+                          alt={`Existing ${index + 1}`}
+                          className="w-full h-24 object-cover rounded"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
                     ))}
-                  </ul>
+                    {images.map((image, index) => (
+                      <div key={`new-${index}`} className="relative">
+                        <img
+                          src={URL.createObjectURL(image)}
+                          alt={`New ${index + 1}`}
+                          className="w-full h-24 object-cover rounded"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveNewImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -606,7 +613,7 @@ const MansionForm = () => {
                 <input
                   type="text"
                   name="unitno"
-                  placeholder="Add Unit no"
+                  placeholder="Add Unit No"
                   value={mansionData.unitno}
                   onChange={handleChange}
                   className="w-full p-2 border border-gray-300 outline-none focus:border-green-500"
@@ -709,7 +716,9 @@ const MansionForm = () => {
               />
             </div>
             <div className="form-group">
-              <label className="block text-gray-700 mb-2">Call No</label>
+              <label className="block text-gray-700 mb-2">Call
+
+ No</label>
               <input
                 type="tel"
                 name="callno"

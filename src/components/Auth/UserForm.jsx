@@ -1,12 +1,14 @@
+// src/components/UserForm.js
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useAuth } from "../../context/AuthContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const UserForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, api } = useAuth();
   const isEditMode = !!id;
 
   const [formData, setFormData] = useState({
@@ -19,17 +21,20 @@ const UserForm = () => {
   });
   const [loading, setLoading] = useState(false);
 
-  const BASE_URL =
-    process.env.NODE_ENV === "production"
-      ? "https://backend-5kh4.onrender.com"
-      : "http://localhost:5001";
+  // Restrict to superadmins
+  useEffect(() => {
+    if (user?.role !== "superadmin") {
+      toast.error("Access denied. Superadmin only.");
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
-    if (isEditMode) {
+    if (isEditMode && user?.role === "superadmin") {
       const fetchUser = async () => {
         try {
           setLoading(true);
-          const response = await axios.get(`${BASE_URL}/api/users/${id}`);
+          const response = await api.get(`/api/users/${id}`);
           const { firstName, lastName, email, role } = response.data;
           setFormData({ firstName, lastName, email, password: "", confirmPassword: "", role });
         } catch (error) {
@@ -41,7 +46,7 @@ const UserForm = () => {
       };
       fetchUser();
     }
-  }, [id, isEditMode, BASE_URL]);
+  }, [id, isEditMode, user, api]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -66,10 +71,10 @@ const UserForm = () => {
         if (formData.password) {
           updateData.password = formData.password;
         }
-        await axios.put(`${BASE_URL}/api/users/${id}`, updateData);
+        await api.put(`/api/users/${id}`, updateData);
         toast.success("User updated successfully");
       } else {
-        await axios.post(`${BASE_URL}/api/auth/signup`, formData);
+        await api.post("/api/auth/signup", formData);
         toast.success("User created successfully");
       }
       navigate("/dashboard");
@@ -80,6 +85,8 @@ const UserForm = () => {
       setLoading(false);
     }
   };
+
+  if (!user || user.role !== "superadmin") return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F9F9F8] py-12 px-4 font-inter">

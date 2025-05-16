@@ -8,9 +8,11 @@ import trafic from "../assests/Traffic.svg";
 import logoutIcon from "../assests/Log Out.svg";
 import leadslogo from "../assests/Leads White.svg";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const AdminSidebar = ({ setViewType }) => {
   const navigate = useNavigate();
+   const { logout } = useAuth();
   const firstName = localStorage.getItem("firstName")?.trim() || "";
   const lastName = localStorage.getItem("lastName")?.trim() || "";
   const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Admin";
@@ -29,6 +31,12 @@ const AdminSidebar = ({ setViewType }) => {
       <h2 className="text-xl mb-16">Welcome, {fullName}</h2>
       <ul className="space-y-8 font-inter mb-8">
     
+        <li
+          onClick={() => setViewType("leads")}
+          className="hover:bg-green-700 p-2 flex border mb-4 gap-4 w-[200px] cursor-pointer items-center"
+        >
+          <img src={homelogo} alt="Mansions" className="w-6" /> Leads
+        </li>
         <li
           onClick={() => setViewType("mansions")}
           className="hover:bg-green-700 p-2 flex border mb-4 gap-4 w-[200px] cursor-pointer items-center"
@@ -52,7 +60,7 @@ const AdminSidebar = ({ setViewType }) => {
         </li>
       </ul>
       <button
-        onClick={handleLogout}
+        onClick={logout}
         className="mt-24 p-2 bg-red-800 flex w-[200px] gap-4 items-center cursor-pointer"
       >
         <img src={logoutIcon} alt="Logout" className="w-4" /> Logout

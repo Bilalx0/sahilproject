@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import MansionCard from "./Card";
+import CurrencySwitcher from "./CurrencySwitcher";
 
 const FeaturedListings = ({ searchQuery }) => {
   // State for all data
@@ -225,6 +226,7 @@ const FeaturedListings = ({ searchQuery }) => {
 
   return (
     <>
+
       {/* Search Results Section */}
       {hasSearched && searchQuery.trim() && (
         <div id="search-results" className="px-4 md:px-10 lg:px-20 py-12">

@@ -1,39 +1,39 @@
-import React, { useState, useEffect } from "react";
-import { FaFacebook, FaInstagram, FaLinkedin, FaYoutube } from "react-icons/fa";
-import { FaXTwitter } from "react-icons/fa6";
-import axios from "axios";
+"use client"
+
+import { useState, useEffect } from "react"
+import { FaFacebook, FaInstagram, FaLinkedin, FaYoutube } from "react-icons/fa"
+import { FaXTwitter } from "react-icons/fa6"
+import axios from "axios"
+import CurrencySwitcher from "./CurrencySwitcher"
 
 const Footer = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [mansionLinks, setMansionLinks] = useState([]);
-  const [penthouseLinks, setPenthouseLinks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [isOpen, setIsOpen] = useState(false)
+  const [email, setEmail] = useState("")
+  const [message, setMessage] = useState("")
+  const [mansionLinks, setMansionLinks] = useState([])
+  const [penthouseLinks, setPenthouseLinks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const BASE_URL =
-    process.env.NODE_ENV === "production"
-      ? "https://backend-5kh4.onrender.com"
-      : "http://localhost:5001";
+  const BASE_URL = process.env.NODE_ENV === "production" ? "https://backend-5kh4.onrender.com" : "http://localhost:5001"
 
   // Fetch links data for Mansion and Penthouse
   useEffect(() => {
     const fetchLinks = async () => {
       try {
-        const response = await axios.get(`${BASE_URL}/api/links`);
-        const linksData = response.data;
+        const response = await axios.get(`${BASE_URL}/api/links`)
+        const linksData = response.data
 
         // Assuming the latest links data is used (or adjust to select a specific one)
         if (linksData && linksData.length > 0) {
-          const latestLinks = linksData[0]; // Use the most recent entry
+          const latestLinks = linksData[0] // Use the most recent entry
           // Mansion links
           const mansion = [
             { text: latestLinks.mansionText1, link: latestLinks.mansionLink1 },
             { text: latestLinks.mansionText2, link: latestLinks.mansionLink2 },
             { text: latestLinks.mansionText3, link: latestLinks.mansionLink3 },
             { text: latestLinks.mansionText4, link: latestLinks.mansionLink4 },
-          ].filter((item) => item.text && item.link); // Filter out empty pairs
+          ].filter((item) => item.text && item.link) // Filter out empty pairs
 
           // Penthouse links
           const penthouse = [
@@ -53,38 +53,38 @@ const Footer = () => {
               text: latestLinks.penthouseText4,
               link: latestLinks.penthouseLink4,
             },
-          ].filter((item) => item.text && item.link); // Filter out empty pairs
+          ].filter((item) => item.text && item.link) // Filter out empty pairs
 
-          setMansionLinks(mansion);
-          setPenthouseLinks(penthouse);
+          setMansionLinks(mansion)
+          setPenthouseLinks(penthouse)
         }
-        setLoading(false);
+        setLoading(false)
       } catch (err) {
-        setError("Failed to load links. Please try again later.");
-        console.error("Error fetching links:", err);
-        setLoading(false);
+        setError("Failed to load links. Please try again later.")
+        console.error("Error fetching links:", err)
+        setLoading(false)
       }
-    };
+    }
 
-    fetchLinks();
-  }, [BASE_URL]);
+    fetchLinks()
+  }, [BASE_URL])
 
   const handleSubscribe = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
 
     try {
       const res = await axios.post(`${BASE_URL}/api/newsletter`, {
         email,
         category: "Newsletter",
-      });
+      })
 
-      setMessage(res.data.message);
-      setEmail("");
+      setMessage(res.data.message)
+      setEmail("")
     } catch (err) {
-      setMessage(err.response?.data?.error || "An error occurred");
-      console.error(err);
+      setMessage(err.response?.data?.error || "An error occurred")
+      console.error(err)
     }
-  };
+  }
 
   return (
     <div className="bg-[#00603A] text-white">
@@ -92,8 +92,8 @@ const Footer = () => {
         <div className="md:text-start text-center">
           <h2 className="text-3xl font-playfair">The Newsletter</h2>
           <p className="mt-2 max-w-2xl text-base">
-            Sign-up for our meticulously crafted collection highlighting the
-            hottest luxury offerings, accompanied by exclusive insights.
+            Sign-up for our meticulously crafted collection highlighting the hottest luxury offerings, accompanied by
+            exclusive insights.
           </p>
         </div>
         <div className="relative">
@@ -117,23 +117,16 @@ const Footer = () => {
                 <div className="border bg-white border-[#00603A] mt-4 p-8 md:p-12">
                   {message ? (
                     <p
-                      className={`text-center text-xl ${
-                        message.includes("error")
-                          ? "text-red-600"
-                          : "text-[#00603A]"
-                      }`}
+                      className={`text-center text-xl ${message.includes("error") ? "text-red-600" : "text-[#00603A]"}`}
                     >
                       {message}
                     </p>
                   ) : (
                     <>
-                      <h2 className="text-[#00603A] font-playfair text-2xl md:text-3xl text-center">
-                        The Newsletter
-                      </h2>
+                      <h2 className="text-[#00603A] font-playfair text-2xl md:text-3xl text-center">The Newsletter</h2>
                       <p className="text-gray-700 text-center mt-4">
-                        Sign-up for our meticulously crafted collection
-                        highlighting the hottest luxury offerings, accompanied
-                        by exclusive insights.
+                        Sign-up for our meticulously crafted collection highlighting the hottest luxury offerings,
+                        accompanied by exclusive insights.
                       </p>
                       <form onSubmit={handleSubscribe}>
                         <div className="mt-8 flex items-center flex-col md:flex-row gap-2">
@@ -224,50 +217,48 @@ const Footer = () => {
       </div>
 
       <div className="flex flex-col pb-16 md:flex-row items-center justify-between mx-20 border-t border-[#ffffff] py-4 pt-8 text-center">
-        <div className="flex justify-center space-x-6 px-4 mb-2 md:mb-0">
-          <a
-            href="https://www.facebook.com/themansionmarketcom"
-            className="hover:text-gray-400 text-lg"
-            aria-label="Facebook"
-          >
-            <FaFacebook />
-          </a>
-          <a
-            href="https://x.com/the_mansion_m"
-            className="hover:text-gray-400 text-lg"
-            aria-label="Twitter X"
-          >
-            <FaXTwitter />
-          </a>
-          <a
-            href="https://www.instagram.com/themansionmarketcom"
-            className="hover:text-gray-400 text-lg"
-            aria-label="Instagram"
-          >
-            <FaInstagram />
-          </a>
-          <a
-            href="https://www.linkedin.com/company/the-mansion-market"
-            className="hover:text-gray-400 text-lg"
-            aria-label="LinkedIn"
-          >
-            <FaLinkedin />
-          </a>
-          <a
-            href="https://www.youtube.com/@TheMansionMarket"
-            className="hover:text-gray-400 text-lg"
-            aria-label="YouTube"
-          >
-            <FaYoutube />
-          </a>
+        <div className="flex flex-col md:flex-row items-center gap-4 mb-4 md:mb-0">
+          <div className="flex justify-center space-x-6 px-4">
+            <a
+              href="https://www.facebook.com/themansionmarketcom"
+              className="hover:text-gray-400 text-lg"
+              aria-label="Facebook"
+            >
+              <FaFacebook />
+            </a>
+            <a href="https://x.com/the_mansion_m" className="hover:text-gray-400 text-lg" aria-label="Twitter X">
+              <FaXTwitter />
+            </a>
+            <a
+              href="https://www.instagram.com/themansionmarketcom"
+              className="hover:text-gray-400 text-lg"
+              aria-label="Instagram"
+            >
+              <FaInstagram />
+            </a>
+            <a
+              href="https://www.linkedin.com/company/the-mansion-market"
+              className="hover:text-gray-400 text-lg"
+              aria-label="LinkedIn"
+            >
+              <FaLinkedin />
+            </a>
+            <a
+              href="https://www.youtube.com/@TheMansionMarket"
+              className="hover:text-gray-400 text-lg"
+              aria-label="YouTube"
+            >
+              <FaYoutube />
+            </a>
+          </div>
+          <CurrencySwitcher />
         </div>
         <p className="font-inter text-[8px] mt-4 md:mt-0 md:text-sm text-[#ffffff] w-[300px] md:w-[660px]">
-          The Mansion Market® holds a registered trademark and operates as a
-          luxury property marketplace.
+          The Mansion Market® holds a registered trademark and operates as a luxury property marketplace.
         </p>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Footer;
+export default Footer

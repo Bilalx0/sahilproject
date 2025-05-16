@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMansions } from "../context/MansionContext";
 import MansionCard from "./Card";
+import CurrencySwitcher from "./CurrencySwitcher";
 
 const MansionList = ({ searchQuery = "", filters = {} }) => {
   const { mansions } = useMansions();
@@ -85,6 +86,7 @@ const MansionList = ({ searchQuery = "", filters = {} }) => {
 
   return (
     <div className="w-full pt-4">
+      <CurrencySwitcher />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {sortedMansions.length > 0 ? (
           sortedMansions

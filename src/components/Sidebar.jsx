@@ -8,9 +8,11 @@ import trafic from "../assests/Traffic.svg";
 import logoutIcon from "../assests/Log Out.svg";
 import leadslogo from "../assests/Leads White.svg";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Sidebar = ({ setViewType }) => {
   const navigate = useNavigate();
+   const { logout } = useAuth();
   const firstName = localStorage.getItem("firstName")?.trim() || "";
   const lastName = localStorage.getItem("lastName")?.trim() || "";
   const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Admin";
@@ -104,7 +106,7 @@ const Sidebar = ({ setViewType }) => {
         </li>
       </ul>
       <button
-        onClick={handleLogout}
+       onClick={logout}
         className="mt-24 p-2 bg-red-800 flex w-[200px] gap-4 items-center cursor-pointer"
       >
         <img src={logoutIcon} alt="Logout" className="w-4" /> Logout

@@ -1,10 +1,6 @@
 import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import Home from "./pages/Home";
 import Mansions from "./pages/Mansions";
 import Penthouses from "./pages/Penthouses";
@@ -19,108 +15,216 @@ import DashboardAdmin from "./pages/DashboardAdmin";
 import CreatePost from "./components/CreatePost";
 import SignupSection from "./pages/SignupSection";
 import NewDevelopment from "./pages/NewDevelopment";
+import NewDevelopmentForm from "./components/NewDevelopmentform";
 import CollectiveListing from "./pages/CollectiveListing";
+import LuxeCollectibles from "./pages/LuxeCollectibles";
 import ListedCollectibles from "./pages/ListedCollectibles";
 import MagazineForm from "./components/MagazineForm";
 import MansionForm from "./components/MansionForm";
 import PenthouseForm from "./components/PenthouseForm";
 import CollectibleForm from "./components/Collectibles";
 import HomePageForm from "./components/HomePageForm";
-import NewDevelopmentForm from "./components/NewDevelopmentform";
 import MansionList from "./components/MansionList";
 import Login from "./components/Auth/Login";
 import Signup from "./components/Auth/Signup";
 import { MansionProvider } from "./context/MansionContext";
 import Admin from "./pages/Admin";
-import LuxeCollectibles from "./pages/LuxeCollectibles";
 import { CollectiblesProvider } from "./context/CollectibleContext";
 import IconicForm from "./pages/IconicForm";
 import UserForm from "./components/Auth/UserForm";
-import ScrollToTop from "./ScrollToTop"; // adjust path if needed
+import ScrollToTop from "./ScrollToTop";
+import { CurrencyProvider } from "./context/CurrencyContext";
 
-function App() {
-  const isAuthenticated = () => {
-    const token = localStorage.getItem("token");
-    return !!token && token !== "";
-  };
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  console.log("ProtectedRoute: Checking auth state - Loading:", loading, "User:", user);
+  if (loading) return <div>Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function AppContent() {
+  const { user, loading } = useAuth();
+  console.log("AppContent: Rendering routes - Loading:", loading, "User:", user);
+  if (loading) return <div>Loading...</div>;
 
   return (
-    <MansionProvider>
-      <CollectiblesProvider>
-        <Router>
-          <ScrollToTop />
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/mansions" element={<Mansions />} />
+      <Route path="/penthouses" element={<Penthouses />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/contactus" element={<ContactUs />} />
+      <Route path="/privacypolicy" element={<PrivacyPolicy />} />
+      <Route path="/magazine" element={<Magazine />} />
+      <Route path="/blogpage/:id" element={<BlogPage />} />
+      <Route path="/mansion/:reference" element={<ListingPage />} />
+      <Route path="/signupsection" element={<SignupSection />} />
+      <Route path="/newdevelopment" element={<NewDevelopment />} />
+      <Route path="/collectivelisting" element={<CollectiveListing />} />
+      <Route path="/listedcollectibles" element={<ListedCollectibles />} />
+      <Route path="/luxecollectibles" element={<LuxeCollectibles />} />
 
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/mansions" element={<Mansions />} />
-            <Route path="/penthouses" element={<Penthouses />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/contactus" element={<ContactUs />} />
-            <Route path="/privacypolicy" element={<PrivacyPolicy />} />
-            <Route path="/magazine" element={<Magazine />} />
-            <Route path="/blogpage/:id" element={<BlogPage />} />
-            <Route path="/mansion/:reference" element={<ListingPage />} />
-            <Route path="/signupsection" element={<SignupSection />} />
-            <Route path="/newdevelopment" element={<NewDevelopment />} />
-            <Route path="/collectivelisting" element={<CollectiveListing />} />
-            <Route path="/listedcollectibles" element={<LuxeCollectibles />} />
+      <Route path="/login" element={!user ? <Login /> : <Navigate to={user.role === "admin" ? "/admin" : "/dashboard"} />} />
+      <Route path="/signup" element={!user ? <Signup /> : <Navigate to={user.role === "admin" ? "/admin" : "/dashboard"} />} />
 
-            <Route path="/userform" element={<UserForm />} />
-            <Route path="/userform/:id" element={<UserForm />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardAdmin />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Admin />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/userform"
+        element={
+          <ProtectedRoute>
+            <UserForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/userform/:id"
+        element={
+          <ProtectedRoute>
+            <UserForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/create-post"
+        element={
+          <ProtectedRoute>
+            <CreatePost />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/magazineform"
+        element={
+          <ProtectedRoute>
+            <MagazineForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/magazineform/:id"
+        element={
+          <ProtectedRoute>
+            <MagazineForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mansionform"
+        element={
+          <ProtectedRoute>
+            <MansionForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mansionform/:id"
+        element={
+          <ProtectedRoute>
+            <MansionForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/penthouseform"
+        element={
+          <ProtectedRoute>
+            <PenthouseForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/collectiblesform"
+        element={
+          <ProtectedRoute>
+            <CollectibleForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/collectiblesform/:id"
+        element={
+          <ProtectedRoute>
+            <CollectibleForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/homeform"
+        element={
+          <ProtectedRoute>
+            <HomePageForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/newdevelopmentform"
+        element={
+          <ProtectedRoute>
+            <NewDevelopmentForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/newdevelopmentform/:id"
+        element={
+          <ProtectedRoute>
+            <NewDevelopmentForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mansionlist"
+        element={
+          <ProtectedRoute>
+            <MansionList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/iconicform"
+        element={
+          <ProtectedRoute>
+            <IconicForm />
+          </ProtectedRoute>
+        }
+      />
 
-            {/* Form Routes */}
-            <Route path="/create-post" element={<CreatePost />} />
-            <Route path="/magazineform" element={<MagazineForm />} />
-            <Route path="/magazineform/:id" element={<MagazineForm />} />
-            <Route path="/mansionform" element={<MansionForm />} />
-            <Route path="/mansionform/:id" element={<MansionForm />} />
-            <Route path="/penthouseform" element={<PenthouseForm />} />
-            <Route path="/collectiblesform" element={<CollectibleForm />} />
-            <Route path="/collectiblesform/:id" element={<CollectibleForm />} />
-            <Route path="/homeform" element={<HomePageForm />} />
-            <Route
-              path="/new-developmentform"
-              element={<NewDevelopmentForm />}
-            />
-            <Route path="/mansionlist" element={<MansionList />} />
-            <Route
-              path="/newdevelopmentform"
-              element={<NewDevelopmentForm />}
-            />
-            <Route
-              path="/newdevelopmentform/:id"
-              element={<NewDevelopmentForm />}
-            />
-            <Route path="/iconicform" element={<IconicForm />} />
+      <Route path="*" element={<Navigate to={user ? (user.role === "admin" ? "/admin" : "/dashboard") : "/login"} replace />} />
+    </Routes>
+  );
+}
 
-            {/* Authentication Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-
-            {/* Protected Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                isAuthenticated() ? (
-                  <DashboardAdmin />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            <Route
-              path="/admin"
-              element={isAuthenticated() ? <Admin /> : <Navigate to="/login" />}
-            />
-
-            {/* Catch-all Redirect */}
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </Router>
-      </CollectiblesProvider>
-    </MansionProvider>
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <MansionProvider>
+          <CurrencyProvider>
+            <CollectiblesProvider>
+              <ScrollToTop />
+              <AppContent />
+            </CollectiblesProvider>
+          </CurrencyProvider>
+        </MansionProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 
