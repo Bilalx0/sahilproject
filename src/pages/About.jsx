@@ -262,7 +262,7 @@ const About = () => {
           href="https://forms.gle/DK3nCFoGdoHhhiqWA"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-inter px-20 py-3 text-black border border-[#00603A] hover:bg-[#00603A] hover:text-white transition-all duration-300"
+          className="font-inter px-20 py-3 mb-16 mt-12 text-black border border-[#00603A] hover:bg-[#00603A] hover:text-white transition-all duration-300"
         >
           List your properties
         </a>

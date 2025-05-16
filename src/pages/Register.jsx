@@ -266,11 +266,11 @@ const Register = () => {
 
       <div className="flex flex-col items-center justify-center min-h-screen px-6 py-16 bg-gray-50">
         <div className="max-w-2xl text-center space-y-8 font-inter">
-          <h1 className="text-[#00603A] text-3xl pb-6 md:text-5xl w-full max-w-[900px] leading-[1] text-center font-playfair ">
+          <h1 className="text-[#00603A] text-3xl pb-6 md:text-5xl w-full max-w-[900px] leading-[1]  text-center font-playfair ">
             Connect with the best luxury real estate marketplace worldwide.
           </h1>
 
-          <p className="text-lg text-center font-inter pb-8 leading-[2]">
+          <p className="text-lg text-center font-inter mt-8 pb-8 leading-[2]">
             Become a part of an elite marketplace for ultra-luxurious mansions
             and penthouses. Our exclusive platform draws ultra-high-net-worth
             buyers who seek unparalleled quality and distinction in their homes.
@@ -286,13 +286,13 @@ const Register = () => {
             owners.
           </p>
         </div>
-        <div className="mt-8">
+        <div className="mt-20 mb-16">
           <a
             href="https://forms.gle/DK3nCFoGdoHhhiqWA"
             target="_blank"
             rel="noopener noreferrer"
             // className="font-inter px-6 py-3 w-full md:w-[500px] text-black border border-[#00603A] hover:bg-[#00603A] hover:text-white transition-all duration-300"
-            className="font-inter px-20 py-3 text-black border border-[#00603A] hover:bg-[#00603A] hover:text-white transition-all duration-300"
+            className="font-inter px-20 py-3 text-black mb-16 border border-[#00603A] hover:bg-[#00603A] hover:text-white transition-all duration-300"
           >
             Register Now
           </a>
@@ -313,10 +313,10 @@ const Register = () => {
 
         {/* Text Section */}
         <div className="w-full md:w-1/2">
-          <h2 className="text-2xl md:text-3xl w-full md:w-[500px] font-playfair text-[#00603A] mb-12">
-            The mansion market Magazine
+          <h2 className="text-2xl md:text-3xl w-full md:w-[500px] font-playfair text-[#000000] mb-12">
+            The <span className="text-[#00603A]">Mansion Market Magazine</span>
           </h2>
-          <p className="text-gray-600 mb-6 font-inter mb-12">
+          <p className="text-gray-600 mb-6 font-inter mb-12 mr-0 md:mr-16 ">
             Expert articles, market insights, and lifestyle features that
             showcase the latest in luxury properties and valuable assets. Check
             out our journal for exclusive updates, tips, and intriguing stories
@@ -326,7 +326,7 @@ const Register = () => {
           <Link to="/magazine">
             <button
               //  className="px-8 py-3 w-full mt-6 md:w-[300px] font-inter text-black border border-[#00603A] hover:bg-[#00603A] hover:text-white transition-all duration-300"
-              className="font-inter px-20 py-3 text-black border border-[#00603A] hover:bg-[#00603A] hover:text-white transition-all duration-300"
+              className="font-inter  px-20 py-3 text-black border border-[#00603A] hover:bg-[#00603A] hover:text-white transition-all duration-300"
             >
               Explore magazine
             </button>
