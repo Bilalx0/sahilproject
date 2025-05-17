@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState } from "react"
+import { createContext, useContext, useState, useEffect } from "react"
 
 // Create Currency Context
 const CurrencyContext = createContext()
@@ -31,7 +31,19 @@ export const CurrencyProvider = ({ children }) => {
     HKD: 7.81,
   }
 
-  const [currency, setCurrency] = useState("AED") // Default to AED
+  // Initialize currency state from localStorage or default to "AED"
+  const [currency, setCurrency] = useState(() => {
+    // Check if window is defined to avoid SSR issues
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("selectedCurrency") || "AED"
+    }
+    return "AED"
+  })
+
+  // Update localStorage whenever currency changes
+  useEffect(() => {
+    localStorage.setItem("selectedCurrency", currency)
+  }, [currency])
 
   // Convert price from AED to selected currency
   const convertPrice = (priceInAED) => {

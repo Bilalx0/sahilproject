@@ -101,9 +101,6 @@ const Sidebar = ({ setViewType }) => {
           <img src={magazinelogo} alt="Magazine" className="w-4" /> Magazine
           Post
         </li>
-        <li className="hover:bg-green-700 p-2 w-[200px] flex gap-4 border mb-4 items-center">
-          <img src={trafic} alt="Traffic" className="w-4" /> Traffic Analytics
-        </li>
       </ul>
       <button
        onClick={logout}

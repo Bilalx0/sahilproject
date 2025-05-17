@@ -36,7 +36,7 @@ const Navbar = () => {
             { name: "Penthouses", href: "/penthouses" },
             { name: "Developments", href: "/newdevelopment" },
             { name: "Magazine", href: "/magazine" },
-            { name: "Luxe Collectibles", href: "/listedcollectibles" },
+            { name: "Luxe Collectibles", href: "/luxecollectibles" },
           ].map((link, index) => (
             <a
               key={index}

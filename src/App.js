@@ -206,7 +206,8 @@ function AppContent() {
         }
       />
 
-      <Route path="*" element={<Navigate to={user ? (user.role === "admin" ? "/admin" : "/dashboard") : "/login"} replace />} />
+      {/* Updated catch-all route to only redirect authenticated users to their respective dashboards */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

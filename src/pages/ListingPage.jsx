@@ -38,6 +38,7 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { Link } from "react-router-dom";
 import PropertyLocationMap from '../components/PropertyLocationMap'
+import { useCurrency } from "../context/CurrencyContext";
 
 const ListingPage = () => {
   const [phonenumber, setphonenumber] = useState("");
@@ -62,6 +63,7 @@ const ListingPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
+  const { currency, convertPrice } = useCurrency(); // Use CurrencyContext
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -149,14 +151,6 @@ const ListingPage = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00603A]"></div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="p-4 max-w-3xl mx-auto text-center">
@@ -179,7 +173,7 @@ const ListingPage = () => {
       "Presidential penthouse in luxury branded residence on Palm Jumeirah",
     status: "For Sale",
     tag: "Exclusive",
-    price: "95,000,000",
+    price: "95000000",
     reference: "44421",
     propertyaddress: "Palm Jumeirah",
     community: "Dubai",
@@ -290,12 +284,9 @@ const ListingPage = () => {
   };
 
   const encodeShareText = () => {
+    const convertedPrice = convertPrice(property.price || 0);
     return encodeURIComponent(
-      `Check out this ${property.propertytype}: ${property.title} - AED ${
-        property.price || "N/A"
-      } in ${property.community || property.category || "N/A"}, ${
-        property.country || "N/A"
-      }`
+      `Check out this ${property.propertytype}: ${property.title} - ${currency} ${convertedPrice} in ${property.community || property.category || "N/A"}, ${property.country || "N/A"}`
     );
   };
 
@@ -342,6 +333,12 @@ const ListingPage = () => {
       "_blank",
       "noopener,noreferrer"
     );
+  };
+
+  const highlightText = (text, query) => {
+    if (!query || !text) return text;
+    const regex = new RegExp(`(${query})`, 'gi');
+    return text.replace(regex, '<mark>$1</mark>');
   };
 
   const isCollectible = property.propertytype === "Luxury Collectibles";
@@ -546,7 +543,7 @@ const ListingPage = () => {
                   {fallbackText || locationText}
                 </p>
                 <p className="text-3xl font-inter text-[#00603A] mt-4">
-                  AED {property.price || "N/A"}
+                  {currency} {convertPrice(property.price || 0)}
                 </p>
                 <p className="text-sm text-gray-500 mt-2 font-inter">
                   PROPERTY REF: {property.reference || "N/A"}
@@ -607,7 +604,7 @@ const ListingPage = () => {
                   {locationText}
                 </p>
                 <p className="text-3xl font-inter text-[#00603A] mt-4">
-                  AED {property.price || "N/A"}
+                  {currency} {convertPrice(property.price || 0)}
                 </p>
                 <p className="text-sm text-gray-500 mt-2 font-inter">
                   PROPERTY REF: {property.reference || "N/A"}

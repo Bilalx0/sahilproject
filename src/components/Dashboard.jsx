@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "../assests/TMM_Logo_Non-responsive.svg";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { useAuth } from "../context/AuthContext"; // Import useAuth
+import { useAuth } from "../context/AuthContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -15,7 +15,7 @@ const Dashboard = ({
   itemsPerPage = 5,
   onPageChange = () => {},
 }) => {
-  const { api } = useAuth(); // Access authenticated api instance
+  const { api, user } = useAuth(); // Access authenticated api instance and user
   const [inquiries, setInquiries] = useState([]);
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,7 +54,7 @@ const Dashboard = ({
 
     try {
       setLoading(true);
-      await api.delete(`${endpoint}/${id}`); // Use api instead of axios
+      await api.delete(`${endpoint}/${id}`);
       toast.success(`${type} deleted successfully`);
 
       if (type === "Inquiry") {
@@ -104,7 +104,6 @@ const Dashboard = ({
     }
   };
 
-  // Filtering logic remains unchanged
   const filteredInquiries = inquiries.filter((inquiry) => {
     const matchesSearch =
       inquiry.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -172,29 +171,34 @@ const Dashboard = ({
     return matchesSearch;
   });
 
-  // Updated useEffect with api
   useEffect(() => {
     const fetchInquiries = async () => {
       try {
-        const response = await api.get("/api/inquiries"); // Use api instead of axios
+        setLoading(true);
+        setError(null);
+        // Conditionally fetch inquiries based on user role
+        const endpoint = user?.role === "admin" ? "/api/admin/inquiries" : "/api/inquiries";
+        const response = await api.get(endpoint);
         setInquiries(response.data);
       } catch (error) {
         console.error("Error fetching inquiries:", error);
         setError(error.response?.data?.message || error.message);
+      } finally {
+        setLoading(false);
       }
     };
 
     if (viewType === "leads") {
       fetchInquiries();
     }
-  }, [viewType, api]);
+  }, [viewType, api, user?.role]);
 
   useEffect(() => {
     const fetchNewsletter = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await api.get("/api/newsletter"); // Use api
+        const response = await api.get("/api/newsletter");
         const transformedData = response.data.map((item) => ({
           id: item._id,
           email: item.email || "N/A",
@@ -220,7 +224,7 @@ const Dashboard = ({
       setLoading(true);
       setError(null);
       try {
-        const response = await api.get("/api/properties"); // Use api
+        const response = await api.get("/api/properties");
         const data = response.data;
 
         const transformedData = data
@@ -259,7 +263,7 @@ const Dashboard = ({
       setLoading(true);
       setError(null);
       try {
-        const response = await api.get("/api/properties"); // Use api
+        const response = await api.get("/api/properties");
         const data = response.data;
 
         const transformedData = data
@@ -291,7 +295,7 @@ const Dashboard = ({
       setLoading(true);
       setError(null);
       try {
-        const response = await api.get("/api/magazineDetails"); // Use api
+        const response = await api.get("/api/magazineDetails");
         const transformedData = response.data.map((item) => ({
           id: item._id,
           author: item.author || "N/A",
@@ -320,7 +324,7 @@ const Dashboard = ({
       setLoading(true);
       setError(null);
       try {
-        const response = await api.get("/api/developments"); // Use api
+        const response = await api.get("/api/developments");
         setDevelopments(response.data);
       } catch (error) {
         console.error("Error fetching developments:", error);
@@ -340,7 +344,7 @@ const Dashboard = ({
       setLoading(true);
       setError(null);
       try {
-        const response = await api.get("/api/dashboard/superadmin"); // Use api
+        const response = await api.get("/api/dashboard/superadmin");
         setUsers(response.data.users);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -354,6 +358,7 @@ const Dashboard = ({
       fetchUsers();
     }
   }, [viewType, api]);
+
   return (
     <div className="flex-1 bg-[#F9F9F8]">
       <ToastContainer />
@@ -1317,7 +1322,7 @@ const Dashboard = ({
                   </button>
                 </div>
               </div>
-              <table className="min-w-full border font-inter text-sm">
+              <table className for="min-w-full border font-inter text-sm">
                 <thead>
                   <tr className="bg-[#BAD4CA]">
                     <th className="py-2 px-4 border">S.NO</th>

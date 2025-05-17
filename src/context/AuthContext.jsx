@@ -61,40 +61,68 @@ export const AuthProvider = ({ children }) => {
   );
 
   useEffect(() => {
-    console.log("AuthContext: Checking for stored token...");
+    console.log("AuthContext: Checking authentication state...");
     const storedToken = localStorage.getItem("token");
     if (storedToken) {
       console.log("AuthContext: Found token in localStorage:", storedToken);
-      setUser({ token: storedToken });
       api
         .post("/api/auth/validate", { token: storedToken })
         .then((response) => {
           console.log("AuthContext: Token validation response:", response.data);
           if (response.data.valid) {
-            setUser((prev) => ({
-              ...prev,
+            setUser({
+              token: storedToken,
               role: response.data.role,
               firstName: response.data.firstName,
               lastName: response.data.lastName,
-            }));
+            });
+            setLoading(false);
           } else {
-            console.log("AuthContext: Token invalid, logging out...");
-            logout();
+            console.log("AuthContext: Token invalid, attempting to refresh...");
+            refreshToken();
           }
         })
         .catch((error) => {
           console.error("AuthContext: Token validation failed:", error);
-          logout();
-        })
-        .finally(() => {
-          console.log("AuthContext: Setting loading to false");
-          setLoading(false);
+          refreshToken();
         });
     } else {
       console.log("AuthContext: No token found in localStorage");
       setLoading(false);
     }
   }, []);
+
+  const refreshToken = async () => {
+    try {
+      const refreshResponse = await axios.post(
+        `${BASE_URL}/api/auth/refresh`,
+        {},
+        { withCredentials: true }
+      );
+      const newToken = refreshResponse.data.accessToken;
+      console.log("AuthContext: Token refreshed successfully:", newToken);
+      setUser((prev) => ({
+        ...prev,
+        token: newToken,
+      }));
+      localStorage.setItem("token", newToken);
+      // Re-validate to get user details
+      const validateResponse = await api.post("/api/auth/validate", { token: newToken });
+      if (validateResponse.data.valid) {
+        setUser({
+          token: newToken,
+          role: validateResponse.data.role,
+          firstName: validateResponse.data.firstName,
+          lastName: validateResponse.data.lastName,
+        });
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("AuthContext: Token refresh failed:", error);
+      logout();
+      setLoading(false);
+    }
+  };
 
   const signup = async ({ firstName, lastName, email, password, role }) => {
     try {
@@ -113,7 +141,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("role", userRole || "");
       localStorage.setItem("firstName", userFirstName || "");
       localStorage.setItem("lastName", userLastName || "");
-      // Redirect based on role
       navigate(userRole === "admin" ? "/admin" : "/dashboard", { replace: true });
       return { success: true };
     } catch (error) {
@@ -133,7 +160,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("role", role || "");
       localStorage.setItem("firstName", firstName || "");
       localStorage.setItem("lastName", lastName || "");
-      // Redirect based on role
       navigate(role === "admin" ? "/admin" : "/dashboard", { replace: true });
       return { success: true };
     } catch (error) {
@@ -149,6 +175,13 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("role");
     localStorage.removeItem("firstName");
     localStorage.removeItem("lastName");
+    api.post("/api/auth/logout", {}, { withCredentials: true })
+      .then(() => {
+        console.log("AuthContext: Logout successful");
+      })
+      .catch((error) => {
+        console.error("AuthContext: Logout error:", error);
+      });
     navigate("/login", { replace: true });
   };
 
