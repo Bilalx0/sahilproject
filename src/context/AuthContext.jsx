@@ -87,8 +87,8 @@ export const AuthProvider = ({ children }) => {
           refreshToken();
         });
     } else {
-      console.log("AuthContext: No token found in localStorage");
-      setLoading(false);
+      console.log("AuthContext: No token found, attempting to refresh...");
+      refreshToken();
     }
   }, []);
 
@@ -101,12 +101,7 @@ export const AuthProvider = ({ children }) => {
       );
       const newToken = refreshResponse.data.accessToken;
       console.log("AuthContext: Token refreshed successfully:", newToken);
-      setUser((prev) => ({
-        ...prev,
-        token: newToken,
-      }));
       localStorage.setItem("token", newToken);
-      // Re-validate to get user details
       const validateResponse = await api.post("/api/auth/validate", { token: newToken });
       if (validateResponse.data.valid) {
         setUser({
@@ -119,7 +114,8 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     } catch (error) {
       console.error("AuthContext: Token refresh failed:", error);
-      logout();
+      setUser(null);
+      localStorage.removeItem("token");
       setLoading(false);
     }
   };
@@ -175,7 +171,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("role");
     localStorage.removeItem("firstName");
     localStorage.removeItem("lastName");
-    api.post("/api/auth/logout", {}, { withCredentials: true })
+    api
+      .post("/api/auth/logout", {}, { withCredentials: true })
       .then(() => {
         console.log("AuthContext: Logout successful");
       })

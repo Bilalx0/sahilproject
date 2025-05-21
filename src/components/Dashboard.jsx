@@ -7,15 +7,11 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useAuth } from "../context/AuthContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
-const Dashboard = ({
-  viewType,
-  currentPage = 1,
-  totalPages = 1,
-  itemsPerPage = 5,
-  onPageChange = () => {},
-}) => {
-  const { api, user } = useAuth(); // Access authenticated api instance and user
+const Dashboard = ({ viewType }) => {
+  const { api, user } = useAuth();
   const [inquiries, setInquiries] = useState([]);
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,6 +23,9 @@ const Dashboard = ({
   const [luxuryCollectibles, setLuxuryCollectibles] = useState([]);
   const [magazineDetails, setMagazineDetails] = useState([]);
   const [developments, setDevelopments] = useState([]);
+  const [displayCount, setDisplayCount] = useState(10);
+  const [showCheckboxes, setShowCheckboxes] = useState(false);
+  const [selectedRows, setSelectedRows] = useState([]);
   const navigate = useNavigate();
 
   const BASE_URL =
@@ -59,18 +58,25 @@ const Dashboard = ({
 
       if (type === "Inquiry") {
         setInquiries(inquiries.filter((item) => item._id !== id));
+        setSelectedRows(selectedRows.filter((rowId) => rowId !== id));
       } else if (type === "Newsletter") {
         setProperties(properties.filter((item) => item.id !== id));
+        setSelectedRows(selectedRows.filter((rowId) => rowId !== id));
       } else if (type === "Magazine Article") {
         setMagazineDetails(magazineDetails.filter((item) => item.id !== id));
+        setSelectedRows(selectedRows.filter((rowId) => rowId !== id));
       } else if (type === "Luxury Collectible") {
         setLuxuryCollectibles(luxuryCollectibles.filter((item) => item.id !== id));
+        setSelectedRows(selectedRows.filter((rowId) => rowId !== id));
       } else if (["Mansion", "Penthouse"].includes(type)) {
         setProperties(properties.filter((item) => item.id !== id));
+        setSelectedRows(selectedRows.filter((rowId) => rowId !== id));
       } else if (type === "Development") {
         setDevelopments(developments.filter((item) => item._id !== id));
+        setSelectedRows(selectedRows.filter((rowId) => rowId !== id));
       } else if (type === "User") {
         setUsers(users.filter((item) => item._id !== id));
+        setSelectedRows(selectedRows.filter((rowId) => rowId !== id));
       }
     } catch (error) {
       console.error(`Error deleting ${type}:`, error);
@@ -104,6 +110,66 @@ const Dashboard = ({
     }
   };
 
+  const toggleCheckboxes = () => {
+    setShowCheckboxes(!showCheckboxes);
+    setSelectedRows([]);
+  };
+
+  const handleRowSelection = (id) => {
+    setSelectedRows((prev) =>
+      prev.includes(id)
+        ? prev.filter((rowId) => rowId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (data) => {
+    if (selectedRows.length === data.length) {
+      setSelectedRows([]);
+    } else {
+      setSelectedRows(data.map((item) => item._id || item.id));
+    }
+  };
+
+  const exportToExcel = (data, filename, headers) => {
+    const dataToExport = showCheckboxes
+      ? data.filter((item) => selectedRows.includes(item._id || item.id))
+      : data;
+
+    if (dataToExport.length === 0) {
+      toast.error("No rows selected for export");
+      return;
+    }
+
+    const formattedData = dataToExport.map((item) =>
+      headers.reduce(
+        (obj, header) => ({
+          ...obj,
+          [header.label]:
+            header.formatter && item[header.key]
+              ? header.formatter(item[header.key])
+              : item[header.key] || "N/A",
+        }),
+        {}
+      )
+    );
+
+    const worksheet = XLSX.utils.json_to_sheet(formattedData, {
+      header: headers.map((h) => h.label),
+    });
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(file, `${filename}.xlsx`);
+  };
+
+  const handleLoadMore = () => {
+    setDisplayCount((prevCount) => prevCount + 10);
+  };
+
   const filteredInquiries = inquiries.filter((inquiry) => {
     const matchesSearch =
       inquiry.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,20 +182,18 @@ const Dashboard = ({
     return matchesSearch && matchesDate;
   });
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentPosts = filteredInquiries.slice(startIndex, startIndex + itemsPerPage);
-  const calculatedTotalPages = Math.ceil(filteredInquiries.length / itemsPerPage);
-
   const filteredProperties = properties.filter((property) => {
     const matchesSearch =
       viewType === "property"
         ? property.email?.toLowerCase().includes(searchTerm.toLowerCase())
         : property.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           property.reference?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === "All" || property.category === filterCategory;
+    const matchesCategory =
+      filterCategory === "All" || property.category === filterCategory;
     const matchesDate =
       !selectedDate ||
-      new Date(property.createdAt || property.createdTime).toDateString() === selectedDate.toDateString();
+      new Date(property.createdAt || property.createdTime).toDateString() ===
+        selectedDate.toDateString();
     return matchesSearch && (viewType === "property" ? matchesCategory && matchesDate : matchesDate);
   });
 
@@ -176,7 +240,6 @@ const Dashboard = ({
       try {
         setLoading(true);
         setError(null);
-        // Conditionally fetch inquiries based on user role
         const endpoint = user?.role === "admin" ? "/api/admin/inquiries" : "/api/inquiries";
         const response = await api.get(endpoint);
         setInquiries(response.data);
@@ -359,101 +422,171 @@ const Dashboard = ({
     }
   }, [viewType, api]);
 
-  return (
-    <div className="flex-1 bg-[#F9F9F8]">
-      <ToastContainer />
-      <div className="flex bg-[#F9F9F8] pr-4 flex-col sm:flex-row justify-end py-6">
-        <img src={logo} className="w-[400px]" alt="logo" />
+  const renderHeader = (title, breadcrumb) => (
+    <div className="mb-4 sm:mb-6">
+      <h1 className="text-lg sm:text-xl md:text-2xl font-bold">{title}</h1>
+      <div className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2">
+        Dashboard <span className="text-blue-600">/ {breadcrumb}</span>
       </div>
-      <div className="p-6">
-        {viewType === "userdata" ? (
-          <div className="overflow-x-auto font-inter">
-            <div className="flex justify-between items-center mb-2">
-              <h2>All User Detail</h2>
-              <div className="flex items-center gap-2">
-                <Link to="/userform">
-                  <button
-                    className="bg-white text-[#00603A] px-3 py-[10px] hover:bg-gray-200"
-                    onClick={() => handleAddClick("user")}
-                    title="Add New User"
-                  >
-                    <FaPlus />
-                  </button>
-                </Link>
-                <input
-                  type="text"
-                  placeholder="Search by Email, First Name, or Last Name"
-                  className="flex-1 px-4 py-2 text-gray-700 focus:outline-none border border-gray-300"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button className="bg-[#00603A] px-4 py-[10px] text-white hover:text-[#00603A] border border-[#00603A] hover:bg-transparent transition">
-                  <FaSearch />
-                </button>
-              </div>
+    </div>
+  );
+
+  const renderSearchBar = (placeholder, showAddButton = false, addType = "") => {
+    const formRoutes = {
+      user: "/userform",
+      mansion: "/mansionform",
+      penthouse: "/mansionform",
+      "luxury collectible": "/mansionform",
+      "magazine article": "/magazineform",
+      development: "/newdevelopmentform",
+    };
+    const formRoute = formRoutes[addType.toLowerCase()] || "/";
+
+    return (
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center mb-4 sm:mb-6 w-full md:w-96">
+        <div className="flex items-center gap-2 w-full">
+          {showAddButton && (
+            <Link to={formRoute}>
+              <button
+                className="bg-white text-[#00603A] p-2 sm:p-3 hover:bg-gray-200"
+                title={`Add New ${addType.charAt(0).toUpperCase() + addType.slice(1)}`}
+              >
+                <FaPlus className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </Link>
+          )}
+          <input
+            type="text"
+            placeholder={placeholder}
+            className="flex-1 px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base text-gray-700 focus:outline-none border border-gray-300 w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <button className="bg-[#00603A] p-2 sm:p-3 text-white hover:text-[#00603A] border border-[#00603A] hover:bg-transparent transition">
+            <FaSearch className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTableHeader = (headers, data) => (
+    <thead>
+      <tr className="bg-[#BAD4CA]">
+        {showCheckboxes && (
+          <th className="py-2 px-2 sm:px-4 border">
+            <input
+              type="checkbox"
+              checked={selectedRows.length === data.length && data.length > 0}
+              onChange={() => handleSelectAll(data)}
+            />
+          </th>
+        )}
+        {headers.map((header, index) => (
+          <th key={index} className="py-2 px-2 sm:px-4 border">
+            {header}
+          </th>
+        ))}
+      </tr>
+    </thead>
+  );
+
+  return (
+    <div className="flex-1 bg-[#F9F9F8] p-4 sm:p-6 md:p-8 lg:p-10 w-full min-h-screen">
+      <ToastContainer />
+      <div className="flex justify-center sm:justify-end mb-4 sm:mb-6">
+        <img
+          src={logo}
+          className="w-[300px] sm:w-[200px] md:w-[300px] lg:w-[400px] mb-10"
+          alt="logo"
+        />
+      </div>
+      {viewType === "userdata" ? (
+        <div className="font-inter w-full">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            {renderHeader("All User Detail", "Users")}
+            {renderSearchBar("Search by Email, First Name, or Last Name", true, "user")}
+          </div>
+          <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
+            <h2 className="text-sm sm:text-base md:text-lg font-inter">Users</h2>
+            <div className="flex gap-2">
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={toggleCheckboxes}
+              >
+                {showCheckboxes ? "Hide Selection" : "Select Data"}
+              </button>
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={() =>
+                  exportToExcel(filteredUsers, "users", [
+                    { label: "Sno", key: "_id" },
+                    { label: "First Name", key: "firstName" },
+                    { label: "Last Name", key: "lastName" },
+                    { label: "Email", key: "email" },
+                    { label: "Role", key: "role" },
+                  ])
+                }
+              >
+                Export
+              </button>
             </div>
-            <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
-              <h2 className="text-base font-inter">Users</h2>
-              <div className="flex gap-2">
-                <button className="bg-white text-[#00603A] px-3 py-1 hover:bg-gray-200">
-                  Export
-                </button>
-              </div>
-            </div>
-            <table className="min-w-full border text-sm font-inter">
-              <thead>
-                <tr className="bg-[#BAD4CA]">
-                  <th className="py-2 px-2 border">Sno</th>
-                  <th className="py-2 px-2 border">First Name</th>
-                  <th className="py-2 px-2 border">Last Name</th>
-                  <th className="py-2 px-2 border">Email</th>
-                  <th className="py-2 px-2 border">Password</th>
-                  <th className="py-2 px-2 border">Role</th>
-                  <th className="py-2 px-2 border">Actions</th>
-                </tr>
-              </thead>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border text-xs sm:text-sm font-inter">
+              {renderTableHeader(
+                ["Sno", "First Name", "Last Name", "Email", "Password", "Role", "Actions"],
+                filteredUsers
+              )}
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="py-2 px-2 border text-center">
+                    <td colSpan={showCheckboxes ? 8 : 7} className="py-2 px-2 sm:px-4 border text-center">
                       Loading...
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
                     <td
-                      colSpan="7"
-                      className="py-2 px-2 border text-center text-red-600"
+                      colSpan={showCheckboxes ? 8 : 7}
+                      className="py-2 px-2 sm:px-4 border text-center text-red-600"
                     >
                       Error: {error}
                     </td>
                   </tr>
                 ) : filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-2 px-2 border text-center">
+                    <td colSpan={showCheckboxes ? 8 : 7} className="py-2 px-2 sm:px-4 border text-center">
                       No users match your search
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map((user, index) => (
+                  filteredUsers.slice(0, displayCount).map((user, index) => (
                     <tr
                       key={user._id}
                       className="hover:bg-gray-100"
                       onClick={() => handleRowClick(user)}
                     >
-                      <td className="py-2 border text-center">{index + 1}</td>
-                      <td className="py-2 px-2 border">{user.firstName}</td>
-                      <td className="py-2 px-2 border">{user.lastName}</td>
-                      <td className="py-2 border text-center">{user.email}</td>
-                      <td className="py-2 px-2 border">********</td>
-                      <td className="py-2 px-2 border">{user.role}</td>
-                      <td className="py-2 px-2 border">
+                      {showCheckboxes && (
+                        <td className="py-2 px-2 sm:px-4 border">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(user._id)}
+                            onChange={() => handleRowSelection(user._id)}
+                          />
+                        </td>
+                      )}
+                      <td className="py-2 px-2 sm:px-4 border text-center">{index + 1}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{user.firstName}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{user.lastName}</td>
+                      <td className="py-2 px-2 sm:px-4 border text-center">{user.email}</td>
+                      <td className="py-2 px-2 sm:px-4 border">********</td>
+                      <td className="py-2 px-2 sm:px-4 border">{user.role}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
                         <div className="flex gap-2 justify-center">
                           <FaEdit
                             className="text-green-600 cursor-pointer"
-                            onClick={(e) =>
-                              handleEditClick(e, user._id, "User")
-                            }
+                            onClick={(e) => handleEditClick(e, user._id, "User")}
                           />
                           <FaTrash
                             className="text-red-600 cursor-pointer"
@@ -469,125 +602,122 @@ const Dashboard = ({
               </tbody>
             </table>
           </div>
-        ) : viewType === "leads" ? (
-          <div className="overflow-x-auto font-inter">
-            <div className="flex justify-between items-center mb-2">
-              <h2>All Leads</h2>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Search by Email, Name, or Reference"
-                  className="flex-1 px-4 py-2 text-gray-700 focus:outline-none border border-gray-300"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button className="bg-[#00603A] px-4 py-[10px] text-white hover:text-[#00603A] border border-[#00603A] hover:bg-transparent transition">
-                  <FaSearch />
-                </button>
-              </div>
+          {filteredUsers.length > displayCount && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLoadMore}
+                className="bg-[#00603A] text-white px-4 py-2 text-sm sm:text-base hover:bg-[#004d2e] transition"
+              >
+                Load More
+              </button>
             </div>
-            <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
-              <h2 className="text-base font-inter">Leads</h2>
-              <div className="flex gap-2">
-                <button className="bg-white text-[#00603A] px-3 py-1 hover:bg-gray-200">
-                  Import
-                </button>
-                <button className="bg-white text-[#00603A] px-3 py-1 hover:bg-gray-200">
-                  Export
-                </button>
-              </div>
+          )}
+        </div>
+      ) : viewType === "leads" ? (
+        <div className="font-inter w-full">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            {renderHeader("All Leads", "Leads")}
+            {renderSearchBar("Search by Email, Name, or Reference")}
+          </div>
+          <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
+            <h2 className="text-sm sm:text-base md:text-lg font-inter">Leads</h2>
+            <div className="flex gap-2">
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={toggleCheckboxes}
+              >
+                {showCheckboxes ? "Hide Selection" : "Select Data"}
+              </button>
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={() =>
+                  exportToExcel(filteredInquiries, "leads", [
+                    { label: "Reference no", key: "reference" },
+                    { label: "First Name", key: "firstName" },
+                    { label: "Last Name", key: "lastName" },
+                    { label: "Email", key: "email" },
+                    { label: "Phone", key: "phone" },
+                    { label: "Created Time", key: "createdAt", formatter: formatDate },
+                    { label: "Message", key: "message" },
+                  ])
+                }
+              >
+                Export
+              </button>
             </div>
-            <table className="min-w-full border text-sm font-inter">
-              <thead>
-                <tr className="bg-[#BAD4CA]">
-                  <th className="py-2 px-2 border">Reference no</th>
-                  <th className="py-2 px-2 border">First Name</th>
-                  <th className="py-2 px-2 border">Last Name</th>
-                  <th className="py-2 px-2 border">Email</th>
-                  <th className="py-2 px-2 border">Phone</th>
-                  <th className="py-2 px-2 border">
-                    Created Time
-                    <DatePicker
-                      selected={selectedDate}
-                      onChange={(date) => setSelectedDate(date)}
-                      showTimeSelect
-                      dateFormat="Pp"
-                      customInput={
-                        <button className="px-2 py-1 cursor-pointer">
-                          {selectedDate ? formatDate(selectedDate) : ""} 🔽
-                        </button>
-                      }
-                    />
-                  </th>
-                  <th className="py-2 px-2 border">Message</th>
-                  <th className="py-2 px-2 border">Actions</th>
-                </tr>
-              </thead>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border text-xs sm:text-sm font-inter">
+              {renderTableHeader(
+                [
+                  "Reference no",
+                  "First Name",
+                  "Last Name",
+                  "Email",
+                  "Phone",
+                  "Created Time",
+                  "Message",
+                  "Actions",
+                ],
+                filteredInquiries
+              )}
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="8" className="py-2 px-2 border text-center">
+                    <td colSpan={showCheckboxes ? 9 : 8} className="py-2 px-2 sm:px-4 border text-center">
                       Loading...
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
                     <td
-                      colSpan="8"
-                      className="py-2 px-2 border text-center text-red-600"
+                      colSpan={showCheckboxes ? 9 : 8}
+                      className="py-2 px-2 sm:px-4 border text-center text-red-600"
                     >
                       Error: {error}
                     </td>
                   </tr>
-                ) : currentPosts.length === 0 ? (
+                ) : filteredInquiries.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="py-2 px-2 border text-center">
+                    <td colSpan={showCheckboxes ? 9 : 8} className="py-2 px-2 sm:px-4 border text-center">
                       No leads match your search
                     </td>
                   </tr>
                 ) : (
-                  currentPosts.map((inquiry) => (
+                  filteredInquiries.slice(0, displayCount).map((inquiry) => (
                     <tr
                       key={inquiry._id}
                       className="hover:bg-gray-100"
                       onClick={() => handleRowClick(inquiry)}
                     >
-                      <td className="py-2 border text-center">
-                        {inquiry.reference || "N/A"}
+                      {showCheckboxes && (
+                        <td className="py-2 px-2 sm:px-4 border">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(inquiry._id)}
+                            onChange={() => handleRowSelection(inquiry._id)}
+                          />
+                        </td>
+                      )}
+                      <td className="py-2 px-2 sm:px-4 border text-center">
+                        {inquiry.propertyRef || "N/A"}
                       </td>
-                      <td className="py-2 px-2 border">
-                        {inquiry.firstName || "NEW"}
-                      </td>
-                      <td className="py-2 px-2 border">
-                        {inquiry.lastName || "N/A"}
-                      </td>
-                      <td className="py-2 border text-center">
-                        {inquiry.email || "N/A"}
-                      </td>
-                      <td className="py-2 px-2 border">
-                        {inquiry.phone || "N/A"}
-                      </td>
-                      <td className="py-2 px-2 border">
-                        {formatDate(inquiry.createdAt)}
-                      </td>
-                      <td className="py-2 px-2 border">
-                        <div
-                          className="max-w-[200px] truncate"
-                          title={inquiry.message}
-                        >
+                      <td className="py-2 px-2 sm:px-4 border">{inquiry.firstName || "NEW"}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{inquiry.lastName || "N/A"}</td>
+                      <td className="py-2 px-2 sm:px-4 border text-center">{inquiry.email || "N/A"}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{inquiry.phone || "N/A"}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{formatDate(inquiry.createdAt)}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        <div className="max-w-[150px] sm:max-w-[200px] truncate" title={inquiry.message}>
                           {inquiry.message || "N/A"}
                         </div>
                       </td>
-                      <td className="py-2 px-2 border">
+                      <td className="py-2 px-2 sm:px-4 border">
                         <div className="flex gap-2 justify-center">
                           <FaTrash
                             className="text-red-600 cursor-pointer"
                             onClick={() =>
-                              handleDelete(
-                                inquiry._id,
-                                "Inquiry",
-                                "/api/inquiries"
-                              )
+                              handleDelete(inquiry._id, "Inquiry", "/api/inquiries")
                             }
                           />
                         </div>
@@ -597,854 +727,710 @@ const Dashboard = ({
                 )}
               </tbody>
             </table>
-            {calculatedTotalPages > 1 && (
-              <div className="flex justify-between mt-4">
-                {currentPage > 1 && (
-                  <button
-                    onClick={() => onPageChange(currentPage - 1)}
-                    className="bg-gray-700 text-white px-4 py-2"
-                  >
-                    Previous
-                  </button>
+          </div>
+          {filteredInquiries.length > displayCount && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLoadMore}
+                className="bg-[#00603A] text-white px-4 py-2 text-sm sm:text-base hover:bg-[#004d2e] transition"
+              >
+                Load More
+              </button>
+            </div>
+          )}
+        </div>
+      ) : viewType === "property" ? (
+        <div className="font-inter w-full">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            {renderHeader("Newsletter", "Newsletter")}
+            {renderSearchBar("Search By Email")}
+          </div>
+          <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
+            <h2 className="text-sm sm:text-base md:text-lg font-inter">Newsletter List</h2>
+            <div className="flex gap-2">
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={toggleCheckboxes}
+              >
+                {showCheckboxes ? "Hide Selection" : "Select Data"}
+              </button>
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={() =>
+                  exportToExcel(filteredProperties, "newsletter", [
+                    { label: "S.No", key: "id" },
+                    { label: "Email", key: "email" },
+                    { label: "Category", key: "category" },
+                    { label: "Created Time", key: "createdTime", formatter: formatDate },
+                  ])
+                }
+              >
+                Export
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border font-inter text-xs sm:text-sm">
+              {renderTableHeader(
+                ["S.NO", "Email", "Category", "Created Time", "Actions"],
+                filteredProperties
+              )}
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 6 : 5} className="py-2 px-2 sm:px-4 border text-center">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td
+                      colSpan={showCheckboxes ? 6 : 5}
+                      className="py-2 px-2 sm:px-4 border text-center text-red-600"
+                    >
+                      Error: {error}
+                    </td>
+                  </tr>
+                ) : filteredProperties.length === 0 ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 6 : 5} className="py-2 px-2 sm:px-4 border text-center">
+                      No data available
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProperties.slice(0, displayCount).map((property, index) => (
+                    <tr
+                      key={property.id}
+                      className={`hover:bg-gray-100 ${index % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
+                      onClick={() => handleRowClick(property)}
+                    >
+                      {showCheckboxes && (
+                        <td className="py-2 px-2 sm:px-4 border">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(property.id)}
+                            onChange={() => handleRowSelection(property.id)}
+                          />
+                        </td>
+                      )}
+                      <td className="py-2 px-2 sm:px-4 border">{index + 1}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{property.email}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{property.category}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{formatDate(property.createdTime)}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        <div className="flex gap-2 justify-center">
+                          <FaTrash
+                            className="text-red-600 cursor-pointer"
+                            onClick={() =>
+                              handleDelete(property.id, "Newsletter", "/api/newsletter")
+                            }
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
-                {currentPage < calculatedTotalPages && (
-                  <button
-                    onClick={() => onPageChange(currentPage + 1)}
-                    className="bg-gray-700 text-white px-4 py-2"
-                  >
-                    Next
-                  </button>
+              </tbody>
+            </table>
+          </div>
+          {filteredProperties.length > displayCount && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLoadMore}
+                className="bg-[#00603A] text-white px-4 py-2 text-sm sm:text-base hover:bg-[#004d2e] transition"
+              >
+                Load More
+              </button>
+            </div>
+          )}
+        </div>
+      ) : viewType === "mansions" ? (
+        <div className="font-inter w-full">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            {renderHeader("Mansion Listings", "Mansions")}
+            {renderSearchBar("Search by Title or Reference", true, "mansion")}
+          </div>
+          <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
+            <h2 className="text-sm sm:text-base md:text-lg font-inter">Mansion Listings</h2>
+            <div className="flex gap-2">
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={toggleCheckboxes}
+              >
+                {showCheckboxes ? "Hide Selection" : "Select Data"}
+              </button>
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={() =>
+                  exportToExcel(filteredProperties, "mansions", [
+                    { label: "Ref no.", key: "reference" },
+                    { label: "Title", key: "title" },
+                    { label: "Location", key: "location" },
+                    { label: "Price", key: "price" },
+                    { label: "Created Time", key: "createdAt", formatter: formatDate },
+                  ])
+                }
+              >
+                Export
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border font-inter text-xs sm:text-sm">
+              {renderTableHeader(
+                ["Ref no.", "Title", "Location", "Price", "Created Time", "Actions"],
+                filteredProperties
+              )}
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td
+                      colSpan={showCheckboxes ? 7 : 6}
+                      className="py-2 px-2 sm:px-4 border text-center text-red-600"
+                    >
+                      Error: {error}
+                    </td>
+                  </tr>
+                ) : filteredProperties.length === 0 ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      No mansion listings available
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProperties.slice(0, displayCount).map((property, index) => (
+                    <tr
+                      key={property.id}
+                      className={`hover:bg-gray-100 ${index % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
+                      onClick={() => handleRowClick(property)}
+                    >
+                      {showCheckboxes && (
+                        <td className="py-2 px-2 sm:px-4 border">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(property.id)}
+                            onChange={() => handleRowSelection(property.id)}
+                          />
+                        </td>
+                      )}
+                      <td className="py-2 px-2 sm:px-4 border">{property.reference}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{property.title}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{property.location}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{property.price}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{formatDate(property.createdAt)}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        <div className="flex gap-2 justify-center">
+                          <FaEdit
+                            className="text-green-600 cursor-pointer"
+                            onClick={(e) => handleEditClick(e, property.id, "Mansion")}
+                          />
+                          <FaTrash
+                            className="text-red-600 cursor-pointer"
+                            onClick={() =>
+                              handleDelete(property.id, "Mansion", "/api/properties")
+                            }
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
-              </div>
-            )}
+              </tbody>
+            </table>
           </div>
-        ) : viewType === "property" ? (
-          <div className="overflow-x-auto font-inter">
-            <h1 className="text-2xl mb-4">Newsletter</h1>
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 text-sm">
-              <h1 className="flex flex-col text-base">
-                <span>
-                  Dashboard <span className="text-blue-600">/ Newsletter </span>
-                </span>
-              </h1>
-              <div className="flex flex-col sm:flex-row gap-3 items-center">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Search By Email"
-                    className="flex-1 px-4 py-2 text-gray-700 focus:outline-none border border-gray-300"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  <button className="bg-[#00603A] px-4 py-[10px] text-white hover:text-[#00603A] border border-[#00603A] hover:bg-transparent transition">
-                    <FaSearch />
-                  </button>
-                </div>
-              </div>
+          {filteredProperties.length > displayCount && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLoadMore}
+                className="bg-[#00603A] text-white px-4 py-2 text-sm sm:text-base hover:bg-[#004d2e] transition"
+              >
+                Load More
+              </button>
             </div>
-            <div className="overflow-x-auto font-inter">
-              <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
-                <h2 className="text-base font-inter">Newsletter List</h2>
-                <div className="flex gap-2">
-                  <button className="bg-white text-[#00603A] px-3 py-1 hover:bg-gray-200">
-                    Export
-                  </button>
-                </div>
-              </div>
-              <table className="min-w-full border font-inter text-sm">
-                <thead>
-                  <tr className="bg-[#BAD4CA]">
-                    <th className="py-2 px-4 border">S.NO</th>
-                    <th className="py-2 px-4 border">Email</th>
-                    <th className="py-2 px-4 border">
-                      <label className="px-2">Category</label>
-                      <select
-                        value={filterCategory}
-                        onChange={(e) => setFilterCategory(e.target.value)}
-                        className="border py-2 rounded"
-                      >
-                        <option value="All">All</option>
-                        <option value="Newsletter">Newsletter</option>
-                        <option value="Magazine">Magazine</option>
-                      </select>
-                    </th>
-                    <th className="py-2 px-4 border">
-                      <label className="px-2">Created Time</label>
-                      <DatePicker
-                        selected={selectedDate}
-                        onChange={(date) => setSelectedDate(date)}
-                        showTimeSelect
-                        dateFormat="Pp"
-                        customInput={
-                          <button className="border px-2 py-1 rounded bg-white shadow-sm cursor-pointer">
-                            {selectedDate
-                              ? formatDate(selectedDate)
-                              : "Select Time"}{" "}
-                            🔽
-                          </button>
-                        }
-                      />
-                    </th>
-                    <th className="py-2 px-4 border">Actions</th>
+          )}
+        </div>
+      ) : viewType === "penthouses" ? (
+        <div className="font-inter w-full">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            {renderHeader("Penthouse Listings", "Penthouses")}
+            {renderSearchBar("Search by Title or Reference", true, "penthouse")}
+          </div>
+          <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
+            <h2 className="text-sm sm:text-base md:text-lg font-inter">Penthouse Listings</h2>
+            <div className="flex gap-2">
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={toggleCheckboxes}
+              >
+                {showCheckboxes ? "Hide Selection" : "Select Data"}
+              </button>
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={() =>
+                  exportToExcel(filteredProperties, "penthouses", [
+                    { label: "Ref no.", key: "reference" },
+                    { label: "Title", key: "title" },
+                    { label: "Location", key: "location" },
+                    { label: "Price", key: "price" },
+                    { label: "Created Time", key: "createdAt", formatter: formatDate },
+                  ])
+                }
+              >
+                Export
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border font-inter text-xs sm:text-sm">
+              {renderTableHeader(
+                ["Ref no.", "Title", "Location", "Price", "Created Time", "Actions"],
+                filteredProperties
+              )}
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      Loading...
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="5" className="py-2 px-2 border text-center">
-                        Loading...
-                      </td>
-                    </tr>
-                  ) : error ? (
-                    <tr>
-                      <td
-                        colSpan="5"
-                        className="py-2 px-2 border text-center text-red-600"
-                      >
-                        Error: {error}
-                      </td>
-                    </tr>
-                  ) : filteredProperties.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="py-2 px-2 border text-center">
-                        No data available
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredProperties.map((property, index) => (
-                      <tr
-                        key={property.id}
-                        className={`hover:bg-gray-100 ${
-                          index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                        }`}
-                        onClick={() => handleRowClick(property)}
-                      >
-                        <td className="py-2 px-2 border">{index + 1}</td>
-                        <td className="py-2 px-2 border">{property.email}</td>
-                        <td className="py-2 px-2 border">
-                          {property.category}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          {formatDate(property.createdTime)}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          <div className="flex gap-2 justify-center">
-                            <FaTrash
-                              className="text-red-600 cursor-pointer"
-                              onClick={() =>
-                                handleDelete(
-                                  property.id,
-                                  "Newsletter",
-                                  "/api/newsletter"
-                                )
-                              }
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : viewType === "mansions" ? (
-          <div className="overflow-x-auto font-inter">
-            <h1 className="text-2xl mb-4">Mansion Listings</h1>
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 text-sm">
-              <h1 className="flex flex-col text-base">
-                <span>
-                  Dashboard <span className="text-blue-600">/ Mansions </span>
-                </span>
-              </h1>
-              <div className="flex items-center gap-2">
-                <Link to="/mansionform">
-                  <button
-                    className="bg-white text-[#00603A] px-3 py-[10px] hover:bg-gray-200"
-                    onClick={() => handleAddClick("mansion")}
-                    title="Add New Mansion"
-                  >
-                    <FaPlus />
-                  </button>
-                </Link>
-                <input
-                  type="text"
-                  placeholder="Search by Title or Reference"
-                  className="flex-1 px-4 py-2 text-gray-700 focus:outline-none border border-gray-300"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button className="bg-[#00603A] px-4 py-[10px] text-white hover:text-[#00603A] border border-[#00603A] hover:bg-transparent transition">
-                  <FaSearch />
-                </button>
-              </div>
-            </div>
-            <div className="overflow-x-auto font-inter">
-              <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
-                <h2 className="text-base font-inter">Mansion Listings</h2>
-                <div className="flex gap-2">
-                  <button className="bg-white text-[#00603A] px-3 py-1 hover:bg-gray-200">
-                    Export
-                  </button>
-                </div>
-              </div>
-              <table className="min-w-full border font-inter text-sm">
-                <thead>
-                  <tr className="bg-[#BAD4CA]">
-                    <th className="py-2 px-4 border">Ref no.</th>
-                    <th className="py-2 px-4 border">Title</th>
-                    <th className="py-2 px-4 border">Location</th>
-                    <th className="py-2 px-4 border">Price</th>
-                    <th className="py-2 px-4 border">Created Time</th>
-                    <th className="py-2 px-4 border">Actions</th>
+                ) : error ? (
+                  <tr>
+                    <td
+                      colSpan={showCheckboxes ? 7 : 6}
+                      className="py-2 px-2 sm:px-4 border text-center text-red-600"
+                    >
+                      Error: {error}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        Loading...
-                      </td>
-                    </tr>
-                  ) : error ? (
-                    <tr>
-                      <td
-                        colSpan="6"
-                        className="py-2 px-2 border text-center text-red-600"
-                      >
-                        Error: {error}
-                      </td>
-                    </tr>
-                  ) : filteredProperties.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        No mansion listings available
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredProperties.map((property, index) => (
-                      <tr
-                        key={property.id}
-                        className={`hover:bg-gray-100 ${
-                          index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                        }`}
-                        onClick={() => handleRowClick(property)}
-                      >
-                        <td className="py-2 px-2 border">
-                          {property.reference}
-                        </td>
-                        <td className="py-2 px-2 border">{property.title}</td>
-                        <td className="py-2 px-2 border">
-                          {property.location}
-                        </td>
-                        <td className="py-2 px-2 border">{property.price}</td>
-                        <td className="py-2 px-2 border">
-                          {formatDate(property.createdAt)}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          <div className="flex gap-2 justify-center">
-                            <FaEdit
-                              className="text-green-600 cursor-pointer"
-                              onClick={(e) =>
-                                handleEditClick(e, property.id, "Mansion")
-                              }
-                            />
-                            <FaTrash
-                              className="text-red-600 cursor-pointer"
-                              onClick={() =>
-                                handleDelete(
-                                  property.id,
-                                  "Mansion",
-                                  "/api/properties"
-                                )
-                              }
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : viewType === "penthouses" ? (
-          <div className="overflow-x-auto font-inter">
-            <h1 className="text-2xl mb-4">Penthouse Listings</h1>
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 text-sm">
-              <h1 className="flex flex-col text-base">
-                <span>
-                  Dashboard <span className="text-blue-600">/ Penthouses </span>
-                </span>
-              </h1>
-              <div className="flex items-center gap-2">
-                <Link to="/mansionform">
-                  <button
-                    className="bg-white text-[#00603A] px-3 py-[10px] hover:bg-gray-200"
-                    onClick={() => handleAddClick("penthouse")}
-                    title="Add New Penthouse"
-                  >
-                    <FaPlus />
-                  </button>
-                </Link>
-                <input
-                  type="text"
-                  placeholder="Search by Title or Reference"
-                  className="flex-1 px-4 py-2 text-gray-700 focus:outline-none border border-gray-300"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button className="bg-[#00603A] px-4 py-[10px] text-white hover:text-[#00603A] border border-[#00603A] hover:bg-transparent transition">
-                  <FaSearch />
-                </button>
-              </div>
-            </div>
-            <div className="overflow-x-auto font-inter">
-              <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
-                <h2 className="text-base font-inter">Penthouse Listings</h2>
-                <div className="flex gap-2">
-                  <button className="bg-white text-[#00603A] px-3 py-1 hover:bg-gray-200">
-                    Export
-                  </button>
-                </div>
-              </div>
-              <table className="min-w-full border font-inter text-sm">
-                <thead>
-                  <tr className="bg-[#BAD4CA]">
-                    <th className="py-2 px-4 border">Ref no.</th>
-                    <th className="py-2 px-4 border">Title</th>
-                    <th className="py-2 px-4 border">Location</th>
-                    <th className="py-2 px-4 border">Price</th>
-                    <th className="py-2 px-4 border">Created Time</th>
-                    <th className="py-2 px-4 border">Actions</th>
+                ) : filteredProperties.length === 0 ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      No penthouse listings available
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        Loading...
+                ) : (
+                  filteredProperties.slice(0, displayCount).map((property, index) => (
+                    <tr
+                      key={property.id}
+                      className={`hover:bg-gray-100 ${index % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
+                      onClick={() => handleRowClick(property)}
+                    >
+                      {showCheckboxes && (
+                        <td className="py-2 px-2 sm:px-4 border">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(property.id)}
+                            onChange={() => handleRowSelection(property.id)}
+                          />
+                        </td>
+                      )}
+                      <td className="py-2 px-2 sm:px-4 border">{property.reference}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{property.title}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{property.location}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{property.price}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{formatDate(property.createdAt)}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        <div className="flex gap-2 justify-center">
+                          <FaEdit
+                            className="text-green-600 cursor-pointer"
+                            onClick={(e) => handleEditClick(e, property.id, "Penthouse")}
+                          />
+                          <FaTrash
+                            className="text-red-600 cursor-pointer"
+                            onClick={() =>
+                              handleDelete(property.id, "Penthouse", "/api/properties")
+                            }
+                          />
+                        </div>
                       </td>
                     </tr>
-                  ) : error ? (
-                    <tr>
-                      <td
-                        colSpan="6"
-                        className="py-2 px-2 border text-center text-red-600"
-                      >
-                        Error: {error}
-                      </td>
-                    </tr>
-                  ) : filteredProperties.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        No penthouse listings available
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredProperties.map((property, index) => (
-                      <tr
-                        key={property.id}
-                        className={`hover:bg-gray-100 ${
-                          index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                        }`}
-                        onClick={() => handleRowClick(property)}
-                      >
-                        <td className="py-2 px-2 border">
-                          {property.reference}
-                        </td>
-                        <td className="py-2 px-2 border">{property.title}</td>
-                        <td className="py-2 px-2 border">
-                          {property.location}
-                        </td>
-                        <td className="py-2 px-2 border">{property.price}</td>
-                        <td className="py-2 px-2 border">
-                          {formatDate(property.createdAt)}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          <div className="flex gap-2 justify-center">
-                            <FaEdit
-                              className="text-green-600 cursor-pointer"
-                              onClick={(e) =>
-                                handleEditClick(e, property.id, "Penthouse")
-                              }
-                            />
-                            <FaTrash
-                              className="text-red-600 cursor-pointer"
-                              onClick={() =>
-                                handleDelete(
-                                  property.id,
-                                  "Penthouse",
-                                  "/api/properties"
-                                )
-                              }
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {filteredProperties.length > displayCount && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLoadMore}
+                className="bg-[#00603A] text-white px-4 py-2 text-sm sm:text-base hover:bg-[#004d2e] transition"
+              >
+                Load More
+              </button>
+            </div>
+          )}
+        </div>
+      ) : viewType === "luxurycollectibles" ? (
+        <div className="font-inter w-full">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            {renderHeader("Luxury Collectibles Listings", "Luxury Collectibles")}
+            {renderSearchBar("Search by Title or Reference", true, "luxury collectible")}
+          </div>
+          <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
+            <h2 className="text-sm sm:text-base md:text-lg font-inter">Luxury Collectibles Listings</h2>
+            <div className="flex gap-2">
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={toggleCheckboxes}
+              >
+                {showCheckboxes ? "Hide Selection" : "Select Data"}
+              </button>
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={() =>
+                  exportToExcel(filteredLuxuryCollectibles, "luxury_collectibles", [
+                    { label: "Ref no.", key: "reference" },
+                    { label: "Title", key: "title" },
+                    { label: "Location", key: "location" },
+                    { label: "Price", key: "price" },
+                    { label: "Created Time", key: "createdAt", formatter: formatDate },
+                  ])
+                }
+              >
+                Export
+              </button>
             </div>
           </div>
-        ) : viewType === "luxurycollectibles" ? (
-          <div className="overflow-x-auto font-inter">
-            <h1 className="text-2xl mb-4">Luxury Collectibles Listings</h1>
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 text-sm">
-              <h1 className="flex flex-col text-base">
-                <span>
-                  Dashboard{" "}
-                  <span className="text-blue-600">/ Luxury Collectibles </span>
-                </span>
-              </h1>
-              <div className="flex items-center gap-2">
-                <Link to="/mansionform">
-                  <button
-                    className="bg-white text-[#00603A] px-3 py-[10px] hover:bg-gray-200"
-                    onClick={() => handleAddClick("luxury collectible")}
-                    title="Add New Luxury Collectible"
-                  >
-                    <FaPlus />
-                  </button>
-                </Link>
-                <input
-                  type="text"
-                  placeholder="Search by Title or Reference"
-                  className="flex-1 px-4 py-2 text-gray-700 focus:outline-none border border-gray-300"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button className="bg-[#00603A] px-4 py-[10px] text-white hover:text-[#00603A] border border-[#00603A] hover:bg-transparent transition">
-                  <FaSearch />
-                </button>
-              </div>
-            </div>
-            <div className="overflow-x-auto font-inter">
-              <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
-                <h2 className="text-base font-inter">
-                  Luxury Collectibles Listings
-                </h2>
-                <div className="flex gap-2">
-                  <button className="bg-white text-[#00603A] px-3 py-1 hover:bg-gray-200">
-                    Export
-                  </button>
-                </div>
-              </div>
-              <table className="min-w-full border font-inter text-sm">
-                <thead>
-                  <tr className="bg-[#BAD4CA]">
-                    <th className="py-2 px-4 border">Ref no.</th>
-                    <th className="py-2 px-4 border">Title</th>
-                    <th className="py-2 px-4 border">Location</th>
-                    <th className="py-2 px-4 border">Price</th>
-                    <th className="py-2 px-4 border">
-                      <label className="px-2">Created Time</label>
-                      <DatePicker
-                        selected={selectedDate}
-                        onChange={(date) => setSelectedDate(date)}
-                        showTimeSelect
-                        dateFormat="Pp"
-                        customInput={
-                          <button className="border px-2 py-1 rounded bg-white shadow-sm cursor-pointer">
-                            {selectedDate
-                              ? formatDate(selectedDate)
-                              : "Select Time"}{" "}
-                            🔽
-                          </button>
-                        }
-                      />
-                    </th>
-                    <th className="py-2 px-4 border">Actions</th>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border font-inter text-xs sm:text-sm">
+              {renderTableHeader(
+                ["Ref no.", "Title", "Location", "Price", "Created Time", "Actions"],
+                filteredLuxuryCollectibles
+              )}
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      Loading...
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        Loading...
-                      </td>
-                    </tr>
-                  ) : error ? (
-                    <tr>
-                      <td
-                        colSpan="6"
-                        className="py-2 px-2 border text-center text-red-600"
-                      >
-                        Error: {error}
-                      </td>
-                    </tr>
-                  ) : filteredLuxuryCollectibles.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        No luxury collectibles available
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredLuxuryCollectibles.map((collectible, index) => (
-                      <tr
-                        key={collectible.id}
-                        className={`hover:bg-gray-100 ${
-                          index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                        }`}
-                        onClick={() => handleRowClick(collectible)}
-                      >
-                        <td className="py-2 px-2 border">
-                          {collectible.reference}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          {collectible.title}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          {collectible.location}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          {collectible.price}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          {formatDate(collectible.createdAt)}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          <div className="flex gap-2 justify-center">
-                            <FaEdit
-                              className="text-green-600 cursor-pointer"
-                              onClick={(e) =>
-                                handleEditClick(
-                                  e,
-                                  collectible.id,
-                                  "Luxury Collectible"
-                                )
-                              }
-                            />
-                            <FaTrash
-                              className="text-red-600 cursor-pointer"
-                              onClick={() =>
-                                handleDelete(
-                                  collectible.id,
-                                  "Luxury Collectible",
-                                  "/api/properties"
-                                )
-                              }
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : viewType === "magazine" ? (
-          <div className="overflow-x-auto font-inter">
-            <h1 className="text-2xl mb-4">Magazine Articles</h1>
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 text-sm">
-              <h1 className="flex flex-col text-base">
-                <span>
-                  Dashboard <span className="text-blue-600">/ Magazine </span>
-                </span>
-              </h1>
-              <div className="flex items-center gap-2">
-                <Link to="/magazineform">
-                  <button
-                    className="bg-white text-[#00603A] px-3 py-[10px] hover:bg-gray-200"
-                    onClick={() => handleAddClick("magazine article")}
-                    title="Add New Magazine Article"
-                  >
-                    <FaPlus />
-                  </button>
-                </Link>
-                <input
-                  type="text"
-                  placeholder="Search by Title or Author"
-                  className="flex-1 px-4 py-2 text-gray-700 focus:outline-none border border-gray-300"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button className="bg-[#00603A] px-4 py-[10px] text-white hover:text-[#00603A] border border-[#00603A] hover:bg-transparent transition">
-                  <FaSearch />
-                </button>
-              </div>
-            </div>
-            <div className="overflow-x-auto font-inter">
-              <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
-                <h2 className="text-base font-inter">Magazine Articles</h2>
-                <div className="flex gap-2">
-                  <button className="bg-white text-[#00603A] px-3 py-1 hover:bg-gray-200">
-                    Export
-                  </button>
-                </div>
-              </div>
-              <table className="min-w-full border font-inter text-sm">
-                <thead>
-                  <tr className="bg-[#BAD4CA]">
-                    <th className="py-2 px-4 border">S.NO</th>
-                    <th className="py-2 px-4 border">Title</th>
-                    <th className="py-2 px-4 border">Author</th>
-                    <th className="py-2 px-4 border">Subtitle</th>
-                    <th className="py-2 px-4 border">
-                      <label className="px-2">Published Time</label>
-                      <DatePicker
-                        selected={selectedDate}
-                        onChange={(date) => setSelectedDate(date)}
-                        showTimeSelect
-                        dateFormat="Pp"
-                        customInput={
-                          <button className="border px-2 py-1 rounded bg-white shadow-sm cursor-pointer">
-                            {selectedDate
-                              ? formatDate(selectedDate)
-                              : "Select Time"}{" "}
-                            🔽
-                          </button>
-                        }
-                      />
-                    </th>
-                    <th className="py-2 px-4 border">Actions</th>
+                ) : error ? (
+                  <tr>
+                    <td
+                      colSpan={showCheckboxes ? 7 : 6}
+                      className="py-2 px-2 sm:px-4 border text-center text-red-600"
+                    >
+                      Error: {error}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        Loading...
-                      </td>
-                    </tr>
-                  ) : error ? (
-                    <tr>
-                      <td
-                        colSpan="6"
-                        className="py-2 px-2 border text-center text-red-600"
-                      >
-                        Error: {error}
-                      </td>
-                    </tr>
-                  ) : filteredMagazineDetails.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        No magazine articles available
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredMagazineDetails.map((magazine, index) => (
-                      <tr
-                        key={magazine.id}
-                        className={`hover:bg-gray-100 ${
-                          index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                        }`}
-                        onClick={() => handleRowClick(magazine)}
-                      >
-                        <td className="py-2 px-2 border">{index + 1}</td>
-                        <td className="py-2 px-2 border">{magazine.title}</td>
-                        <td className="py-2 px-2 border">{magazine.author}</td>
-                        <td className="py-2 px-2 border">
-                          <div
-                            className="max-w-[200px] truncate"
-                            title={magazine.subtitle}
-                          >
-                            {magazine.subtitle || "N/A"}
-                          </div>
-                        </td>
-                        <td className="py-2 px-2 border">
-                          {formatDate(magazine.time)}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          <div className="flex gap-2 justify-center">
-                            <Link to={`/magazine/${magazine.id}`}>
-                              <FaEye className="text-blue-600 cursor-pointer" />
-                            </Link>
-                            <FaEdit
-                              className="text-green-600 cursor-pointer"
-                              onClick={(e) =>
-                                handleEditClick(
-                                  e,
-                                  magazine.id,
-                                  "Magazine Article"
-                                )
-                              }
-                            />
-                            <FaTrash
-                              className="text-red-600 cursor-pointer"
-                              onClick={() =>
-                                handleDelete(
-                                  magazine.id,
-                                  "Magazine Article",
-                                  "/api/magazineDetail"
-                                )
-                              }
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : viewType === "newDevelopments" ? (
-          <div className="overflow-x-auto font-inter">
-            <h1 className="text-2xl mb-4">New Developments</h1>
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-5 text-sm">
-              <h1 className="flex flex-col text-base">
-                <span>
-                  Dashboard{" "}
-                  <span className="text-blue-600">/ New Developments </span>
-                </span>
-              </h1>
-              <div className="flex items-center gap-2">
-                <Link to="/newdevelopmentform">
-                  <button
-                    className="bg-white text-[#00603A] px-3 py-[10px] hover:bg-gray-200"
-                    onClick={() => handleAddClick("development")}
-                    title="Add New Development"
-                  >
-                    <FaPlus />
-                  </button>
-                </Link>
-                <input
-                  type="text"
-                  placeholder="Search by Title or Link"
-                  className="flex-1 px-4 py-2 text-gray-700 focus:outline-none border border-gray-300"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button className="bg-[#00603A] px-4 py-[10px] text-white hover:text-[#00603A] border border-[#00603A] hover:bg-transparent transition">
-                  <FaSearch />
-                </button>
-              </div>
-            </div>
-            <div className="overflow-x-auto font-inter">
-              <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
-                <h2 className="text-base font-inter">New Developments</h2>
-                <div className="flex gap-2">
-                  <button className="bg-white text-[#00603A] px-3 py-1 hover:bg-gray-200">
-                    Export
-                  </button>
-                </div>
-              </div>
-              <table className for="min-w-full border font-inter text-sm">
-                <thead>
-                  <tr className="bg-[#BAD4CA]">
-                    <th className="py-2 px-4 border">S.NO</th>
-                    <th className="py-2 px-4 border">Title</th>
-                    <th className="py-2 px-4 border">Image</th>
-                    <th className="py-2 px-4 border">Link</th>
-                    <th className="py-2 px-4 border">
-                      <label className="px-2">Created Time</label>
-                      <DatePicker
-                        selected={selectedDate}
-                        onChange={(date) => setSelectedDate(date)}
-                        showTimeSelect
-                        dateFormat="Pp"
-                        customInput={
-                          <button className="border px-2 py-1 rounded bg-white shadow-sm cursor-pointer">
-                            {selectedDate
-                              ? formatDate(selectedDate)
-                              : "Select Time"}{" "}
-                            🔽
-                          </button>
-                        }
-                      />
-                    </th>
-                    <th className="py-2 px-4 border">Actions</th>
+                ) : filteredLuxuryCollectibles.length === 0 ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      No luxury collectibles available
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        Loading...
+                ) : (
+                  filteredLuxuryCollectibles.slice(0, displayCount).map((collectible, index) => (
+                    <tr
+                      key={collectible.id}
+                      className={`hover:bg-gray-100 ${index % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
+                      onClick={() => handleRowClick(collectible)}
+                    >
+                      {showCheckboxes && (
+                        <td className="py-2 px-2 sm:px-4 border">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(collectible.id)}
+                            onChange={() => handleRowSelection(collectible.id)}
+                          />
+                        </td>
+                      )}
+                      <td className="py-2 px-2 sm:px-4 border">{collectible.reference}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{collectible.title}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{collectible.location}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{collectible.price}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{formatDate(collectible.createdAt)}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        <div className="flex gap-2 justify-center">
+                          <FaEdit
+                            className="text-green-600 cursor-pointer"
+                            onClick={(e) =>
+                              handleEditClick(e, collectible.id, "Luxury Collectible")
+                            }
+                          />
+                          <FaTrash
+                            className="text-red-600 cursor-pointer"
+                            onClick={() =>
+                              handleDelete(collectible.id, "Luxury Collectible", "/api/properties")
+                            }
+                          />
+                        </div>
                       </td>
                     </tr>
-                  ) : error ? (
-                    <tr>
-                      <td
-                        colSpan="6"
-                        className="py-2 px-2 border text-center text-red-600"
-                      >
-                        Error: {error}
-                      </td>
-                    </tr>
-                  ) : filteredDevelopments.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-2 px-2 border text-center">
-                        No developments available
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredDevelopments.map((development, index) => (
-                      <tr
-                        key={development._id}
-                        className={`hover:bg-gray-100 ${
-                          index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                        }`}
-                        onClick={() => handleRowClick(development)}
-                      >
-                        <td className="py-2 px-2 border">{index + 1}</td>
-                        <td className="py-2 px-2 border">
-                          {development.title}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          {development.image ? (
-                            <img
-                              src={development.image}
-                              alt={development.title}
-                              className="h-16 w-16 object-cover"
-                            />
-                          ) : (
-                            "N/A"
-                          )}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          <a
-                            href={development.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            {development.link}
-                          </a>
-                        </td>
-                        <td className="py-2 px-2 border">
-                          {formatDate(development.createdAt)}
-                        </td>
-                        <td className="py-2 px-2 border">
-                          <div className="flex gap-2 justify-center">
-                            <FaEdit
-                              className="text-green-600 cursor-pointer"
-                              onClick={(e) =>
-                                handleEditClick(
-                                  e,
-                                  development._id,
-                                  "Development"
-                                )
-                              }
-                            />
-                            <FaTrash
-                              className="text-red-600 cursor-pointer"
-                              onClick={() =>
-                                handleDelete(
-                                  development._id,
-                                  "Development",
-                                  "/api/developments"
-                                )
-                              }
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {filteredLuxuryCollectibles.length > displayCount && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLoadMore}
+                className="bg-[#00603A] text-white px-4 py-2 text-sm sm:text-base hover:bg-[#004d2e] transition"
+              >
+                Load More
+              </button>
+            </div>
+          )}
+        </div>
+      ) : viewType === "magazine" ? (
+        <div className="font-inter w-full">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            {renderHeader("Magazine Articles", "Magazine")}
+            {renderSearchBar("Search by Title or Author", true, "magazine article")}
+          </div>
+          <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
+            <h2 className="text-sm sm:text-base md:text-lg font-inter">Magazine Articles</h2>
+            <div className="flex gap-2">
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={toggleCheckboxes}
+              >
+                {showCheckboxes ? "Hide Selection" : "Select Data"}
+              </button>
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={() =>
+                  exportToExcel(filteredMagazineDetails, "magazine_articles", [
+                    { label: "S.No", key: "id" },
+                    { label: "Title", key: "title" },
+                    { label: "Author", key: "author" },
+                    { label: "Subtitle", key: "subtitle" },
+                    { label: "Published Time", key: "time", formatter: formatDate },
+                  ])
+                }
+              >
+                Export
+              </button>
             </div>
           </div>
-        ) : (
-          <div className="text-center">
-            <h2 className="text-xl">Select a view from the sidebar</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border font-inter text-xs sm:text-sm">
+              {renderTableHeader(
+                ["S.NO", "Title", "Author", "Subtitle", "Published Time", "Actions"],
+                filteredMagazineDetails
+              )}
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td
+                      colSpan={showCheckboxes ? 7 : 6}
+                      className="py-2 px-2 sm:px-4 border text-center text-red-600"
+                    >
+                      Error: {error}
+                    </td>
+                  </tr>
+                ) : filteredMagazineDetails.length === 0 ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      No magazine articles available
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMagazineDetails.slice(0, displayCount).map((magazine, index) => (
+                    <tr
+                      key={magazine.id}
+                      className={`hover:bg-gray-100 ${index % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
+                      onClick={() => handleRowClick(magazine)}
+                    >
+                      {showCheckboxes && (
+                        <td className="py-2 px-2 sm:px-4 border">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(magazine.id)}
+                            onChange={() => handleRowSelection(magazine.id)}
+                          />
+                        </td>
+                      )}
+                      <td className="py-2 px-2 sm:px-4 border">{index + 1}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{magazine.title}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{magazine.author}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        <div className="max-w-[150px] sm:max-w-[200px] truncate" title={magazine.subtitle}>
+                          {magazine.subtitle || "N/A"}
+                        </div>
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 border">{formatDate(magazine.time)}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        <div className="flex gap-2 justify-center">
+                          <Link to={`/magazine/${magazine.id}`}>
+                            <FaEye className="text-blue-600 cursor-pointer" />
+                          </Link>
+                          <FaEdit
+                            className="text-green-600 cursor-pointer"
+                            onClick={(e) => handleEditClick(e, magazine.id, "Magazine Article")}
+                          />
+                          <FaTrash
+                            className="text-red-600 cursor-pointer"
+                            onClick={() =>
+                              handleDelete(magazine.id, "Magazine Article", "/api/magazineDetail")
+                            }
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+          {filteredMagazineDetails.length > displayCount && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLoadMore}
+                className="bg-[#00603A] text-white px-4 py-2 text-sm sm:text-base hover:bg-[#004d2e] transition"
+              >
+                Load More
+              </button>
+            </div>
+          )}
+        </div>
+      ) : viewType === "newDevelopments" ? (
+        <div className="font-inter w-full">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            {renderHeader("New Developments", "New Developments")}
+            {renderSearchBar("Search by Title or Link", true, "development")}
+          </div>
+          <div className="bg-[#00603A] text-white py-2 px-4 flex justify-between items-center">
+            <h2 className="text-sm sm:text-base md:text-lg font-inter">New Developments</h2>
+            <div className="flex gap-2">
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={toggleCheckboxes}
+              >
+                {showCheckboxes ? "Hide Selection" : "Select Data"}
+              </button>
+              <button
+                className="bg-white text-[#00603A] px-2 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm hover:bg-gray-200"
+                onClick={() =>
+                  exportToExcel(filteredDevelopments, "new_developments", [
+                    { label: "S.No", key: "_id" },
+                    { label: "Title", key: "title" },
+                    { label: "Link", key: "link" },
+                    { label: "Created Time", key: "createdAt", formatter: formatDate },
+                  ])
+                }
+              >
+                Export
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border font-inter text-xs sm:text-sm">
+              {renderTableHeader(
+                ["S.NO", "Title", "Image", "Link", "Created Time", "Actions"],
+                filteredDevelopments
+              )}
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td
+                      colSpan={showCheckboxes ? 7 : 6}
+                      className="py-2 px-2 sm:px-4 border text-center text-red-600"
+                    >
+                      Error: {error}
+                    </td>
+                  </tr>
+                ) : filteredDevelopments.length === 0 ? (
+                  <tr>
+                    <td colSpan={showCheckboxes ? 7 : 6} className="py-2 px-2 sm:px-4 border text-center">
+                      No developments available
+                    </td>
+                  </tr>
+                ) : (
+                  filteredDevelopments.slice(0, displayCount).map((development, index) => (
+                    <tr
+                      key={development._id}
+                      className={`hover:bg-gray-100 ${index % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
+                      onClick={() => handleRowClick(development)}
+                    >
+                      {showCheckboxes && (
+                        <td className="py-2 px-2 sm:px-4 border">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(development._id)}
+                            onChange={() => handleRowSelection(development._id)}
+                          />
+                        </td>
+                      )}
+                      <td className="py-2 px-2 sm:px-4 border">{index + 1}</td>
+                      <td className="py-2 px-2 sm:px-4 border">{development.title}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        {development.image ? (
+                          <img
+                            src={development.image}
+                            alt={development.title}
+                            className="h-12 w-12 sm:h-16 sm:w-16 object-cover"
+                          />
+                        ) : (
+                          "N/A"
+                        )}
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        <a
+                          href={development.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {development.link}
+                        </a>
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 border">{formatDate(development.createdAt)}</td>
+                      <td className="py-2 px-2 sm:px-4 border">
+                        <div className="flex gap-2 justify-center">
+                          <FaEdit
+                            className="text-green-600 cursor-pointer"
+                            onClick={(e) => handleEditClick(e, development._id, "Development")}
+                          />
+                          <FaTrash
+                            className="text-red-600 cursor-pointer"
+                            onClick={() =>
+                              handleDelete(development._id, "Development", "/api/developments")
+                            }
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {filteredDevelopments.length > displayCount && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLoadMore}
+                className="bg-[#00603A] text-white px-4 py-2 text-sm sm:text-base hover:bg-[#004d2e] transition"
+              >
+                Load More
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center">
+          <h2 className="text-base sm:text-lg md:text-xl font-bold">Select a view from the sidebar</h2>
+        </div>
+      )}
     </div>
   );
 };

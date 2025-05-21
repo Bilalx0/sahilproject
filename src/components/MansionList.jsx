@@ -86,7 +86,6 @@ const MansionList = ({ searchQuery = "", filters = {} }) => {
 
   return (
     <div className="w-full pt-4">
-      <CurrencySwitcher />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {sortedMansions.length > 0 ? (
           sortedMansions

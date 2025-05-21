@@ -1,42 +1,70 @@
 import React, { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-// Custom marker icon
-const createCustomIcon = () => {
-  return L.icon({
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
-};
-
-// Component to update map view when coordinates change
-function ChangeMapView({ coordinates }) {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (coordinates && coordinates.lat && coordinates.lng) {
-      map.flyTo([coordinates.lat, coordinates.lng], 14, {
-        animate: true,
-        duration: 1.5
-      });
-    }
-  }, [coordinates, map]);
-  
-  return null;
-}
+import { useJsApiLoader } from "@react-google-maps/api";
 
 const PropertyLocationMap = ({ property }) => {
   const [coordinates, setCoordinates] = useState({ lat: 25.2048, lng: 55.2708 }); // Default to Dubai
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [locationText, setLocationText] = useState("");
+  const [map, setMap] = useState(null);
+  const [marker, setMarker] = useState(null);
+  const [infoWindow, setInfoWindow] = useState(null);
+
+  // Load Google Maps JavaScript API with Marker library
+  const { isLoaded } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: "AIzaSyAsSnLmp0FYZEaFmTa7Ot8NmJf6pJmgzEA",
+    libraries: ["places"], // Include Places API
+  });
+
+  // Function to initialize the map
+  const initializeMap = async () => {
+    if (!isLoaded) return;
+    
+    const mapDiv = document.getElementById("property-map");
+    if (!mapDiv) return;
+
+    // Import Advanced Marker library dynamically as recommended
+    const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker");
+    
+    // Create the map instance with required mapId for advanced markers
+    const mapInstance = new window.google.maps.Map(mapDiv, {
+      center: coordinates,
+      zoom: 15,
+      scrollwheel: false,
+      mapId: "4d2efa2d0d964508c9b84c0a", // Required for advanced markers
+    });
+    
+    setMap(mapInstance);
+    
+    // Create info window
+    const infoWindowInstance = new window.google.maps.InfoWindow({
+      content: `
+        <div style="padding: 8px; max-width: 200px;">
+          <p style="font-weight: 600; margin: 0;">${property?.title || "Property Location"}</p>
+          <p style="margin-top: 4px; margin-bottom: 0;">${locationText}</p>
+        </div>
+      `,
+    });
+    setInfoWindow(infoWindowInstance);
+
+    // Create and add the Advanced Marker
+    const markerInstance = new AdvancedMarkerElement({
+      position: coordinates,
+      map: mapInstance,
+      title: property?.title || "Property Location",
+    });
+    
+    // Add click event to marker
+    markerInstance.addListener("click", () => {
+      infoWindowInstance.open({
+        anchor: markerInstance,
+        map: mapInstance,
+      });
+    });
+    
+    setMarker(markerInstance);
+  };
 
   useEffect(() => {
     const fetchCoordinates = async () => {
@@ -48,10 +76,11 @@ const PropertyLocationMap = ({ property }) => {
         property?.propertyaddress,
         property?.subcommunity,
         property?.community,
-        property?.country || "UAE"
+        property?.country || "UAE",
       ]
         .filter(Boolean)
         .join(", ");
+      console.log("Constructed address:", address); // Debug log
 
       setLocationText(address);
 
@@ -61,49 +90,51 @@ const PropertyLocationMap = ({ property }) => {
         return;
       }
 
+      if (!isLoaded) return;
+
+      // Use Google Places API for geocoding
+      const geocoder = new window.google.maps.Geocoder();
       try {
-        // Use Nominatim for geocoding (OpenStreetMap's geocoding service)
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
-          {
-            headers: {
-              "User-Agent": "TheMansionMarket/1.0"
+        const results = await new Promise((resolve, reject) => {
+          geocoder.geocode({ address }, (results, status) => {
+            console.log("Geocode status:", status); // Debug log
+            console.log("Geocode results:", results); // Debug log
+            if (status === window.google.maps.GeocoderStatus.OK) {
+              resolve(results);
+            } else {
+              reject(new Error(`Geocoding failed with status: ${status}`));
             }
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Geocoding failed with status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data && data.length > 0) {
-          const { lat, lon } = data[0];
-          setCoordinates({ 
-            lat: parseFloat(lat), 
-            lng: parseFloat(lon) 
           });
+        });
+
+        if (results && results.length > 0) {
+          const { lat, lng } = results[0].geometry.location;
+          const newCoords = { lat: lat(), lng: lng() };
+          console.log("New coordinates:", newCoords); // Debug log
+          setCoordinates(newCoords);
         } else {
-          // Fallback to just community if detailed address failed
+          // Fallback to community if detailed address fails
           if (property?.community) {
-            const fallbackResponse = await fetch(
-              `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(property.community + ", UAE")}&limit=1`,
-              {
-                headers: {
-                  "User-Agent": "TheMansionMarket/1.0"
+            const fallbackResults = await new Promise((resolve, reject) => {
+              geocoder.geocode(
+                { address: `${property.community}, UAE` },
+                (results, status) => {
+                  console.log("Fallback geocode status:", status); // Debug log
+                  console.log("Fallback geocode results:", results); // Debug log
+                  if (status === window.google.maps.GeocoderStatus.OK) {
+                    resolve(results);
+                  } else {
+                    reject(new Error(`Fallback geocoding failed with status: ${status}`));
+                  }
                 }
-              }
-            );
-            
-            const fallbackData = await fallbackResponse.json();
-            
-            if (fallbackData && fallbackData.length > 0) {
-              const { lat, lon } = fallbackData[0];
-              setCoordinates({ 
-                lat: parseFloat(lat), 
-                lng: parseFloat(lon) 
-              });
+              );
+            });
+
+            if (fallbackResults && fallbackResults.length > 0) {
+              const { lat, lng } = fallbackResults[0].geometry.location;
+              const newCoords = { lat: lat(), lng: lng() };
+              console.log("Fallback coordinates:", newCoords); // Debug log
+              setCoordinates(newCoords);
             } else {
               setError("Location not found");
             }
@@ -120,10 +151,36 @@ const PropertyLocationMap = ({ property }) => {
     };
 
     fetchCoordinates();
-  }, [property]);
+  }, [property, isLoaded]);
 
-  // Create custom icon
-  const customIcon = createCustomIcon();
+  // Initialize or update map when coordinates change or map loads
+  useEffect(() => {
+    if (isLoaded && !isLoading && !error) {
+      if (map) {
+        // Update existing map
+        map.setCenter(coordinates);
+        
+        if (marker) {
+          marker.position = coordinates;
+        }
+      } else {
+        // Initialize map
+        initializeMap();
+      }
+    }
+  }, [isLoaded, isLoading, coordinates, error]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (marker) {
+        marker.map = null;
+      }
+      setMap(null);
+      setMarker(null);
+      setInfoWindow(null);
+    };
+  }, []);
 
   return (
     <div className="w-full mt-8">
@@ -134,38 +191,18 @@ const PropertyLocationMap = ({ property }) => {
         {error ? (
           <div className="flex flex-col items-center justify-center h-full bg-gray-50">
             <p className="text-red-600 font-medium">{error}</p>
-            <p className="mt-2 text-gray-500 text-sm">Please check the property address details</p>
+            <p className="mt-2 text-gray-500 text-sm">
+              Please check the property address details
+            </p>
+          </div>
+        ) : !isLoaded || isLoading ? (
+          <div className="flex items-center justify-center h-full bg-gray-50">
+            <p className="text-gray-600">Loading map...</p>
           </div>
         ) : (
-          <MapContainer
-            center={[coordinates.lat, coordinates.lng]}
-            zoom={14}
-            style={{ height: "100%", width: "100%" }}
-            scrollWheelZoom={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Marker 
-              position={[coordinates.lat, coordinates.lng]} 
-              icon={customIcon}
-            >
-              <Popup>
-                <div className="text-sm">
-                  <p className="font-semibold">{property?.title || "Property Location"}</p>
-                  <p className="mt-1">{locationText}</p>
-                </div>
-              </Popup>
-            </Marker>
-            <ChangeMapView coordinates={coordinates} />
-          </MapContainer>
+          <div id="property-map" className="w-full h-full"></div>
         )}
       </div>
-      {/* <div className="mt-2 flex items-start">
-        <Marker className="text-[#00603A] w-4 h-4 mt-1 mr-1" />
-        <p className="text-sm text-gray-600">{locationText || "Address information unavailable"}</p>
-      </div> */}
     </div>
   );
 };

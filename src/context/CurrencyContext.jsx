@@ -51,7 +51,7 @@ export const CurrencyProvider = ({ children }) => {
     const priceInUSD = priceInAED / exchangeRates.AED
     // Convert USD to target currency
     const rate = exchangeRates[currency] || 1
-    return (priceInUSD * rate).toFixed(2)
+    return Math.round(priceInUSD * rate) // Round to nearest whole number
   }
 
   return (

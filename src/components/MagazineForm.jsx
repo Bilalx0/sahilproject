@@ -15,7 +15,7 @@ const MagazineForm = () => {
     mainimage: null,
     bodytext: "",
     time: "",
-    page: "Magazine", // Default to Magazine
+    page: "Magazine",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -103,7 +103,7 @@ const MagazineForm = () => {
 
   // Update stats (word count, image count, line count)
   useEffect(() => {
-    if (quillRef.current) {
+    if (quillRef.current && quillRef.current.getEditor) {
       const quill = quillRef.current.getEditor();
       const updateStats = () => {
         const text = quill.getText().trim();
@@ -119,26 +119,9 @@ const MagazineForm = () => {
     }
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const compressedFile = await compressImage(file);
-      setFormData((prev) => ({ ...prev, mainimage: compressedFile }));
-    }
-  };
-
-  const handleQuillChange = (value) => {
-    setFormData((prev) => ({ ...prev, bodytext: value }));
-  };
-
   // Configure Quill image upload for multiple images
   useEffect(() => {
-    if (quillRef.current) {
+    if (quillRef.current && quillRef.current.getEditor) {
       const quill = quillRef.current.getEditor();
       const toolbar = quill.getModule("toolbar");
 
@@ -180,6 +163,23 @@ const MagazineForm = () => {
       });
     }
   }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const compressedFile = await compressImage(file);
+      setFormData((prev) => ({ ...prev, mainimage: compressedFile }));
+    }
+  };
+
+  const handleQuillChange = (value) => {
+    setFormData((prev) => ({ ...prev, bodytext: value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -326,15 +326,7 @@ const MagazineForm = () => {
                     ["link", "image"],
                   ],
                 }}
-                formats={[
-                  "bold",
-                  "italic",
-                  "underline",
-                  "list",
-                  "bullet",
-                  "link",
-                  "image",
-                ]}
+                formats={["bold", "italic", "underline", "list", "bullet", "link", "image"]}
               />
             </div>
           </div>

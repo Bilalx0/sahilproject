@@ -1,4 +1,3 @@
-// src/components/MansionForm.js
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -104,7 +103,9 @@ const MansionForm = () => {
       [name]: value,
     }));
     if (name === "description") {
-      setDescriptionCharCount(value.length);
+      // Normalize newlines for consistent counting across platforms
+      const normalizedValue = value.replace(/\r\n/g, "\n");
+      setDescriptionCharCount(normalizedValue.length);
     }
   };
 
@@ -198,7 +199,8 @@ const MansionForm = () => {
       fieldsToInclude.forEach((key) => {
         let value = normalizedData[key];
         if (key === "description") {
-          value = value || "";
+          // Preserve newlines explicitly
+          value = value.replace(/\r\n/g, "\n") || "";
         } else {
           value = value !== null && value !== undefined ? value.toString() : "";
         }
@@ -716,9 +718,7 @@ const MansionForm = () => {
               />
             </div>
             <div className="form-group">
-              <label className="block text-gray-700 mb-2">Call
-
- No</label>
+              <label className="block text-gray-700 mb-2">Call No</label>
               <input
                 type="tel"
                 name="callno"

@@ -66,8 +66,14 @@ function AppContent() {
       <Route path="/listedcollectibles" element={<ListedCollectibles />} />
       <Route path="/luxecollectibles" element={<LuxeCollectibles />} />
 
-      <Route path="/login" element={!user ? <Login /> : <Navigate to={user.role === "admin" ? "/admin" : "/dashboard"} />} />
-      <Route path="/signup" element={!user ? <Signup /> : <Navigate to={user.role === "admin" ? "/admin" : "/dashboard"} />} />
+      <Route
+        path="/login"
+        element={<Login />}
+      />
+      <Route
+        path="/signup"
+        element={<Signup />}
+      />
 
       <Route
         path="/dashboard"
@@ -81,7 +87,7 @@ function AppContent() {
         path="/admin"
         element={
           <ProtectedRoute>
-            <Admin />
+            {user && user.role === "admin" ? <Admin /> : <Navigate to="/" replace />}
           </ProtectedRoute>
         }
       />
@@ -206,7 +212,6 @@ function AppContent() {
         }
       />
 
-      {/* Updated catch-all route to only redirect authenticated users to their respective dashboards */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

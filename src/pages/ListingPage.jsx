@@ -63,7 +63,7 @@ const ListingPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
-  const { currency, convertPrice } = useCurrency(); // Use CurrencyContext
+  const { currency, convertPrice } = useCurrency();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -366,7 +366,7 @@ const ListingPage = () => {
 
   return (
     <>
-      <div className="flex flex-col items-center px-4 md:px-10 lg:px-20 py-12  font-inter">
+      <div className="flex flex-col items-center px-4 md:px-10 lg:px-20 py-12 font-inter">
         <div className="flex flex-col md:flex-row items-center justify-between w-full gap-6 relative">
           <Link to="/">
             <img
@@ -527,7 +527,7 @@ const ListingPage = () => {
           />
           <button
             onClick={() => setIsOpen(true)}
-            className="absolute  bottom-8 right-16 bg-white bg-opacity-75 hover:text-white text-black px-8 py-2 border border-[#00603A] hover:bg-[#00603A] transition-all duration-300"
+            className="absolute bottom-8 right-16 bg-white bg-opacity-75 hover:text-white text-black px-8 py-2 border border-[#00603A] hover:bg-[#00603A] transition-all duration-300"
           >
             Show All Photos
           </button>
@@ -548,7 +548,10 @@ const ListingPage = () => {
                 <p className="text-sm text-gray-500 mt-2 font-inter">
                   PROPERTY REF: {property.reference || "N/A"}
                 </p>
-                <p className="text-base text-gray-700 mt-4 leading-7 font-inter w-full">
+                <p
+                  className="text-base text-gray-700 mt-4 leading-7 font-inter w-full"
+                  style={{ whiteSpace: "pre-wrap" }}
+                >
                   {showFullDescription
                     ? property.description
                     : `${
@@ -609,7 +612,10 @@ const ListingPage = () => {
                 <p className="text-sm text-gray-500 mt-2 font-inter">
                   PROPERTY REF: {property.reference || "N/A"}
                 </p>
-                <p className="text-base text-gray-700 mt-4 leading-7 font-inter w-full md:w-10/12">
+                <p
+                  className="text-base text-gray-700 mt-4 leading-7 font-inter w-full md:w-10/12"
+                  style={{ whiteSpace: "pre-wrap" }}
+                >
                   {showFullDescription
                     ? property.description
                     : `${
@@ -664,12 +670,12 @@ const ListingPage = () => {
           <div className="lg:w-5/12 ml-0 md:ml-12 lg:mt-0">
             <div className="sticky top-20">
               {isSubmitted ? (
-                <div className="border border-[#00603A] p-6 mt-8  z-0 sticky top-20 bg-[#f5f5f5] text-center text-[#00603A] font-semibold">
+                <div className="border border-[#00603A] p-6 mt-8 z-0 sticky top-20 bg-[#f5f5f5] text-center text-[#00603A] font-semibold">
                   Your inquiry was submitted successfully!
                 </div>
               ) : (
                 <form className="mt-6" onSubmit={handleSubmit}>
-                  <div className="border border-[#00603A] p-6 mt-4 md:-mt-8   z-0 sticky top-20">
+                  <div className="border border-[#00603A] p-6 mt-4 md:-mt-8 z-0 sticky top-20">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-lg font-inter font-semibold text-gray-800">
@@ -900,14 +906,14 @@ const ListingPage = () => {
         )}
         {isOpen && (
           <div className="w-full absolute bottom-4 left-4">
-            <div className="fixed inset-0 flex justify-center items-start z-50  bg-white overflow-y-auto">
+            <div className="fixed inset-0 flex justify-center items-start z-50 bg-white overflow-y-auto">
               <button
                 onClick={() => setIsOpen(false)}
                 className="fixed top-4 right-8 text-[#000000] hover:text-[#00603A] px-3 py-1 rounded-md text-xl z-50"
               >
                 ✕
               </button>
-              <div className="relative p-5 w-full mt-16 mb-8  ">
+              <div className="relative p-5 w-full mt-16 mb-8">
                 <div className="flex flex-col md:flex-row gap-4 md:h-auto">
                   <div className="flex flex-col w-full md:w-[75%] order-1 md:order-2">
                     {property.images.map((img, index) => (
@@ -920,7 +926,7 @@ const ListingPage = () => {
                     ))}
                   </div>
                   <div className="w-full md:w-[25%] p-4 md:sticky md:top-4 self-start order-2 md:order-1">
-                    <div className="flex flex-col  mt-4 py-6 md:mt-6  md:space-y-0">
+                    <div className="flex flex-col mt-4 py-6 md:mt-6 md:space-y-0">
                       <h3 className="text-3xl font-playfair break-words text-[#000000] mb-8 bg-white">
                         {property.title || "Untitled Property"}
                       </h3>

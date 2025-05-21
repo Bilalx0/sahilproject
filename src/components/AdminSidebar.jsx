@@ -1,67 +1,60 @@
-import React from "react";
-import homelogo from "../assests/Mansions.svg";
-import penthouselogo from "../assests/Penthouse.svg";
-import magazinelogo from "../assests/Magazine.svg";
-import newletterlogo from "../assests/Newsletters.svg";
-import collectible from "../assests/Collectible.svg";
-import trafic from "../assests/Traffic.svg";
-import logoutIcon from "../assests/Log Out.svg";
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import homelogo from '../assests/Mansions.svg';
+import penthouselogo from '../assests/Penthouse.svg';
+import collectible from '../assests/Collectible.svg';
 import leadslogo from "../assests/Leads White.svg";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import logoutIcon from '../assests/Log Out.svg';
 
 const AdminSidebar = ({ setViewType }) => {
   const navigate = useNavigate();
-   const { logout } = useAuth();
-  const firstName = localStorage.getItem("firstName")?.trim() || "";
-  const lastName = localStorage.getItem("lastName")?.trim() || "";
-  const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Admin";
-  console.log("Sidebar: firstName:", firstName, "lastName:", lastName, "fullName:", fullName); // Debug
+  const { logout } = useAuth();
+  const firstName = localStorage.getItem('firstName')?.trim() || '';
+  const lastName = localStorage.getItem('lastName')?.trim() || '';
+  const fullName = [firstName, lastName].filter(Boolean).join(' ') || 'Admin';
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("firstName");
-    localStorage.removeItem("lastName");
-    navigate("/login");
+    logout();
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('firstName');
+    localStorage.removeItem('lastName');
+    navigate('/login');
   };
 
+  const menuItems = [
+    { view: 'leads', label: 'Leads', icon: leadslogo },
+    { view: 'mansions', label: 'Mansion Listings', icon: homelogo },
+    { view: 'penthouses', label: 'Penthouse Listings', icon: penthouselogo },
+    { view: 'luxurycollectibles', label: 'Luxury Collectibles', icon: collectible },
+  ];
+
   return (
-    <div className="w-full sm:w-[280px] bg-green-900 text-white items-center justify-center flex flex-col p-4 sm:relative z-10">
-      <h2 className="text-xl mb-16">Welcome, {fullName}</h2>
-      <ul className="space-y-8 font-inter mb-8">
-    
-        <li
-          onClick={() => setViewType("leads")}
-          className="hover:bg-green-700 p-2 flex border mb-4 gap-4 w-[200px] cursor-pointer items-center"
-        >
-          <img src={homelogo} alt="Mansions" className="w-6" /> Leads
-        </li>
-        <li
-          onClick={() => setViewType("mansions")}
-          className="hover:bg-green-700 p-2 flex border mb-4 gap-4 w-[200px] cursor-pointer items-center"
-        >
-          <img src={homelogo} alt="Mansions" className="w-6" /> Mansion Listings
-        </li>
-        <li
-          onClick={() => setViewType("penthouses")}
-          className="hover:bg-green-700 p-2 border cursor-pointer mb-4 flex w-[200px] gap-4 items-center"
-        >
-          <img src={penthouselogo} alt="Penthouses" className="w-4" /> Penthouse Listings
-        </li>
-        <li
-          onClick={() => setViewType("luxurycollectibles")}
-          className="hover:bg-green-700 p-2 border cursor-pointer w-[200px] flex mb-4 gap-4 items-center"
-        >
-          <img src={collectible} alt="Collectibles" className="w-4" /> Luxury Collectibles
-        </li> 
-        
+    <div className="w-full h-full bg-green-800 text-gray-100 flex flex-col p-4 pt-20 sm:p-6 overflow-y-auto">
+      <h2 className="text-lg sm:text-xl mb-8 sm:mb-12 font-semibold mt-20">
+        Welcome, {fullName}
+      </h2>
+      <ul className="space-y-4 sm:space-y-8 font-inter flex-1">
+        {menuItems.map((item) => (
+          <li
+            key={item.label}
+            onClick={() => {
+              setViewType(item.view);
+            }}
+            className="hover:bg-green-600 p-2 sm:p-3 border cursor-pointer flex items-center gap-3 sm:gap-4 text-sm sm:text-base transition-colors duration-200"
+          >
+            <img src={item.icon} alt={item.label} className="w-4 sm:w-5 h-4 sm:h-5" />
+            {item.label}
+          </li>
+        ))}
       </ul>
       <button
-        onClick={logout}
-        className="mt-24 p-2 bg-red-800 flex w-[200px] gap-4 items-center cursor-pointer"
+        onClick={handleLogout}
+        className="mt-8 sm:mt-12 p-2 sm:p-3 bg-red-700 hover:bg-red-600 flex items-center gap-3 sm:gap-4 text-sm sm:text-base transition-colors duration-200"
       >
-        <img src={logoutIcon} alt="Logout" className="w-4" /> Logout
+        <img src={logoutIcon} alt="Logout" className="w-4 sm:w-5 h-4 sm:h-5" />
+        Logout
       </button>
     </div>
   );
